@@ -803,6 +803,27 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
+        // ### loop_while(flag, model)
+        //
+        // Keeps executing model in a loop as long as flag.valueOf() is truthy.
+        function loop_while(flag, model) {
+            return function (sched, clock, next) {
+                function _break(sched, clock, _) {
+                    sched.perform(next, clock, sh.stop);
+                }
+
+                var loop_model = sched.track(sched.dynamic(function () {
+                    return flag.valueOf() ? sched.cont : _break;
+                }), model);
+
+                function inner_looper(sched, clock, _) {
+                    sched.perform(loop_model, clock, inner_looper);
+                }
+
+                sched.perform(inner_looper, clock, next);
+            };
+        }
+
         // ### fork
         //
         // The models in the given array are spawned off simultanously.
@@ -1094,23 +1115,24 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
-        self.audioContext = audioContext;
-        self.perform    = perform;
-        self.flush      = flush;
-        self.play       = play;
-        self.stop       = stop;
-        self.cont       = cont;
-        self.delay      = delay;
-        self.loop       = loop;
-        self.fork       = fork;
-        self.spawn      = spawn;
-        self.dynamic    = dynamic;
-        self.track      = track;
-        self.trackR     = trackR;
-        self.fire       = fire;
-        self.log        = log;
-        self.anim       = anim;
-        self.rate       = rate;
+        self.audioContext   = audioContext;
+        self.perform        = perform;
+        self.flush          = flush;
+        self.play           = play;
+        self.stop           = stop;
+        self.cont           = cont;
+        self.delay          = delay;
+        self.loop           = loop;
+        self.loop_while     = loop_while;
+        self.fork           = fork;
+        self.spawn          = spawn;
+        self.dynamic        = dynamic;
+        self.track          = track;
+        self.trackR         = trackR;
+        self.fire           = fire;
+        self.log            = log;
+        self.anim           = anim;
+        self.rate           = rate;
 
         return self;
     }
