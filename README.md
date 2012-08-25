@@ -19,7 +19,7 @@ are output nodes (either `AudioNode` objects or `GraphNode`s).
 
 ## Parameterize
 
-Imparts the ability to add dynamic parameters to an object. The øbjet is given
+Imparts the ability to add dynamic parameters to an object. The object is given
 a `params` field through which these parameters can be added and manipulated.
 
 *Usage*: `var obj = org.anclab.steller.Parameterize(obj);`
