@@ -17,7 +17,7 @@ are output nodes (either `AudioNode` objects or `GraphNode`s).
 - `connect(targetGraphNode, outPinIx, inPinIx)`
 - `disconnect(targetGraphNode, outPinIx)`
 
-## Parameterise
+## Parameterize
 
 Imparts the ability to add dynamic parameters to an object. The øbjet is given
 a `params` field through which these parameters can be added and manipulated.
