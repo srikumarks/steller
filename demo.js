@@ -90,18 +90,6 @@ function arpeggio(sh) {
                       , t.play(64), sh.delay(1)
                       );
 
-    // A dynamic entity that checks for a flag and plays a model only
-    // if the flag is > 0.5.
-    function ifmodel(flag, model) {
-        return sh.dynamic(function () {
-            if (flag.valueOf() > 0.5) {
-                return model;
-            } else {
-                return sh.stop;
-            }
-        });
-    }
-
     // The "playing" parameter indicates (and controls) whether
     // the sequence is playing or not.
     model.params.define({name: "playing", min: 0, max: 1, value: 0});
