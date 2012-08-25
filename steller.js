@@ -631,7 +631,8 @@ org.anclab.steller = org.anclab.steller || {};
         // cycle, the variables are swapped.
         var queue = []; var requeue = [];
 
-        function flush() {
+        // Cancels all currently running actions.
+        function cancel() {
             queue.splice(0, queue.length);
             requeue.splice(0, requeue.length);
         }
@@ -1117,7 +1118,7 @@ org.anclab.steller = org.anclab.steller || {};
 
         self.audioContext   = audioContext;
         self.perform        = perform;
-        self.flush          = flush;
+        self.cancel         = cancel;
         self.play           = play;
         self.stop           = stop;
         self.cont           = cont;
