@@ -1,5 +1,5 @@
-// This file contains a series of simple examples for using the
-// various features of the Steller framework.
+// Some simple examples to show usage of the Steller framework.
+// https://github.com/srikumarks/steller
 
 
 // Some helpers for the demos.
@@ -72,10 +72,10 @@ elem('ting').onclick = function (event) {
     sh.play(hello);
 };
 
-// The tingtong model plays two alternating tones a third apart
-// in a loop. The loop is started/stopped by pressing the appropriate
-// buttons.
-function tingtong(sh) {
+// The arpeggio model plays a sequence of tones in a loop.  The loop is
+// started/stopped using the "start" and "stop" buttons in the UI.
+function arpeggio(sh) { 
+    
     var t = ting(sh);
 
     // The "tinger" is itself the output node for this model.
@@ -130,8 +130,8 @@ function tingtong(sh) {
 }
 
 (function () {
-    var tt = tingtong(sh);
-    tt.connect(AC.destination); // We can optionally pipe this through effects before
+    var arp = arpeggio(sh);
+    arp.connect(AC.destination); // We can optionally pipe this through effects before
                                 // hitting the destination node.
 
     // Make a parameter for controlling the rate of playback.
@@ -140,29 +140,29 @@ function tingtong(sh) {
     var p = steller.Parameterize({});
     p.params.define({name: "rate", min: 0.001, max: 1000, value: 1});
 
-    elem('tingtong_start').onclick = function (event) {
+    elem('arpeggio_start').onclick = function (event) {
         // Note that you can click "start" again while a sequence is playing
         // to start another "in parallel", though all such sequences will be
         // controlled using the same rate and half life parameters and all
         // of them will be stopped by clicking "stop".
-        sh.play(sh.track(sh.rate(p.rate), tt.start, tt.pattern));
+        sh.play(sh.track(sh.rate(p.rate), arp.start, arp.pattern));
     };
 
-    elem('tingtong_stop').onclick = function (event) {
-        sh.play(tt.stop);
+    elem('arpeggio_stop').onclick = function (event) {
+        sh.play(arp.stop);
     };
 
-    elem('tingtong_halflife').onchange = function (event) {
+    elem('ting_halflife').onchange = function (event) {
         var value = parseFloat(this.value);
         var halfLife = Math.pow(10, value);
-        elem('tingtong_halflife_value').innerText = '' + (Math.round(halfLife * 1000) / 1000) + ' secs';
-        tt.halfLife.value = halfLife;
+        elem('ting_halflife_value').innerText = '' + (Math.round(halfLife * 1000) / 1000) + ' secs';
+        arp.halfLife.value = halfLife;
     };
 
-    elem('tingtong_speed').onchange = function (event) {
+    elem('arpeggio_speed').onchange = function (event) {
         var value = parseFloat(this.value);
         var rate = Math.pow(10, value);
-        elem('tingtong_speed_value').innerText = '' + (Math.round(rate * 100) / 100);
+        elem('arpeggio_speed_value').innerText = '' + (Math.round(rate * 100) / 100);
         p.rate.value = rate;
     };
 }());
