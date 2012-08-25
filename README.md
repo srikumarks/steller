@@ -10,7 +10,7 @@ namespace `org.anclab.steller`.
 Encapsulates a sub-graph between a set of input nodes and a set of output
 nodes. The two primary methods it adds are -
 
-*Usage*: `var obj = GraphNode(obj, [in1, in2, ...], [out1, out2, ...])` where
+*Usage*: `var obj = org.anclab.steller.GraphNode(obj, [in1, in2, ...], [out1, out2, ...])` where
 `obj` is an object to turn into a `GraphNode`, `inX` are input nodes and `outY`
 are output nodes (either `AudioNode` objects or `GraphNode`s).
 
@@ -22,7 +22,7 @@ are output nodes (either `AudioNode` objects or `GraphNode`s).
 Imparts the ability to add dynamic parameters to an object. The øbjet is given
 a `params` field through which these parameters can be added and manipulated.
 
-*Usage*: `var obj = Parameterize(obj);`
+*Usage*: `var obj = org.anclab.steller.Parameterize(obj);`
 
 - `obj.params.define({name: "param", min: 0, max: 100, value: 50})`
 - `obj.params.define({name: "param", min: 0, max: 100, audioParam: anAudioParam})`
@@ -48,6 +48,8 @@ A sound model is just a parameterizable graph node.
         return Parameterize(GraphNode(obj, inputs, outputs));
     }
 
+This is available as `org.anclab.steller.SoundModel`.
+
 ## Scheduler
 
 A just-in-time scheduler for continuous temporal behaviour. It threads a clock
@@ -57,7 +59,7 @@ object.  The clock object tracks both absolute time and a rate integrated
 pseudo time that can be used for things like tempo changes. The complexity of
 the scheduler is proportional to the number of simultaneously running tracks.
 
-*Usage*: `var sh = new Scheduler(audioContext);`
+*Usage*: `var sh = new org.anclab.steller.Scheduler(audioContext);`
 
 You use the methods of the scheduler object to make specifications or "models" and call
 `sh.play(s)` to play a built specification.
