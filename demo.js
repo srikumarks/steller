@@ -26,6 +26,10 @@ function ting(sh) {
     var output = AC.createGainNode();
     var model = steller.SoundModel({}, [], [output]);
 
+    // halfLife parameter determines the amplitude decay half life (in secs) of
+    // a ting at 440Hz.
+    model.params.define({name: 'halfLife', min: 0.001, max: 10, value: 0.5});
+    
     function play(pitchNumber) {
         return sh.fire(function (clock) {
             var f = 440 * Math.pow(2, (pitchNumber.valueOf() - 69) / 12);
@@ -38,7 +42,7 @@ function ting(sh) {
             gain.connect(output);
             gain.gain.setValueAtTime(1/8, clock.t1);
 
-            var halfLife = model.halfLife.valueOf() * 440 / f;
+            var halfLife = model.halfLife.value * 440 / f;
             var dur = halfLife * 12;
             gain.gain.exponentialRampToValueAtTime(1/32768, clock.t1 + dur);
             osc.noteOn(clock.t1);
@@ -46,14 +50,11 @@ function ting(sh) {
         });
     }
 
-    // halfLife parameter determines the amplitude decay half life of
-    // a ting at 440Hz.
-    model.params.define({name: 'halfLife', min: 0.001, max: 10, value: 0.5});
-
     // You can play multiple tings all mixed into the same output gain node.
     // Note that there is no standard way to "play" or "stop" any sound model.
-    // This is open to convention or need since different models may want
-    // different behaviour.
+    // This is left open since models may need different behaviours in this
+    // regard. For this model, `.play(noteNumber)` is a method that makes
+    // an action meant to be passed to the scheduler.
     model.play = play;
 
     return model;
