@@ -36,6 +36,7 @@ a `params` field through which these parameters can be added and manipulated.
 
 Ex:
 
+    var obj = org.anclab.steller.Parameterize({});
     obj.params.define({name: "griffinStrength", min: 0, max: 100, value: 20});
     obj.griffinStrength.value = 40;
     console.log(obj.griffinStrength.valueOf()); // Prints 40.
