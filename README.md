@@ -1,9 +1,11 @@
 Steller is a small framework for building composeable sound models in
-Javascript using the Web Audio API. It features a `GraphNode` abstraction
+Javascript using the [Web Audio API]. It features a `GraphNode` abstraction
 that encapsulates dynamic signal flow graphs, `Parameterize` to add 
 parameters of various kinds to objects and a `Scheduler` for sequencing
 audio events just in time. These classes are all available under the
 namespace `org.anclab.steller`.
+
+[Web Audio API]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html
 
 ## GraphNode
 
@@ -61,19 +63,24 @@ the scheduler is proportional to the number of simultaneously running tracks.
 
 *Usage*: `var sh = new org.anclab.steller.Scheduler(audioContext);`
 
+Here is [a bare bones demo] of using the scheduler.
+
+[a bare bones demo]: http://srikumarks.github.com/steller
+
 You use the methods of the scheduler object to make specifications or "models" and call
 `sh.play(s)` to play a built specification.
 
 - `sh.audioContext` gives the audio context whose time base is used for
   scheduling.
-- `sh.perform(model, clock, next)` causes the given model to be performed
-  "now".
 - `sh.cancel()` cancels all scheduled processes.
-- `sh.play(model)` causes the given model to be played now. `play` is a simpler
-  wrapper around `perform`.
+- `sh.play(model)` causes the given model to be played now. 
 - `sh.stop` is a model that will cause the track in which it occurs to
   terminate.
 - `sh.cont` is a model that is a no-op when encountered in a track.
+- `sh.track(model1, model2, ...)` makes a sequence for performing the given
+  models one after another.
+- `sh.fire(function (clock) {...})` will cause the given callback to be called
+  at the time the model is performed.
 - `sh.delay(dur, [callback])` will cause the models that follow a `delay` in a
   sequence to occur at a later time.  If a `callback` is specified, it will be
   called like `callback(clock, t1r, t2r, startTime, endTime)` for every "tick"
@@ -91,13 +98,6 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.dynamic(function (clock) { return model; })` makes a "dynamic model" that
   will behave like whatever `model` the given function returns, at the time the
   dynamic model gets to run.
-- `sh.track(model1, model2, ...)` makes a sequence for performing the given
-  models one after another.
-- `sh.trackR(model1, model2, ...)` is nearly identical to `track`, except that
-  it is more general and makes reusable continuations. It is less efficient
-  than `track`, which ought to satisfy most needs.
-- `sh.fire(function (clock) {...})` will cause the given callback to be called
-  at the time the model is performed.
 - `sh.anim(param, duration, v1, v2)` animates the parameter from value `v1` to
   value `v2` over the given `duration` using linear interpolation.
 - `sh.anim(param, duration, function (t) { return value; })` will assign the
@@ -106,7 +106,7 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.anim(param, duration, v1, v2, function (t1) { return t2; })` will use the
   given interpolation function (domain  = `[0,1]`, range = `[0,1]`) to generate
   parameter value s between `v1` and `v2`.
-- `sh.rate(r)` changes the rate of passage of pseudo time through the track in
-  which it occurs to the given `r`. `r = 1` means that the virtual time is
-  itself in seconds.
+- `sh.rate(r)` a model that changes the rate of passage of pseudo time through
+  the track in which it occurs to the given `r`. `r = 1` means that the virtual
+  time is itself in seconds.
  
