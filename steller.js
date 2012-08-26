@@ -747,35 +747,45 @@ org.anclab.steller = org.anclab.steller || {};
         // interval for which it is being called. Continuous parameter
         // animations can be handled using the callback, for example.
         function delay(dt, callback) {
-            return function (sched, clock, next) {
-                var startTime = clock.t1r;
-                (function tick(sched, clock) {
-                    var endTime = startTime + dt.valueOf();
+            var entry = true;
+            var sched, clock, next, startTime;
 
-                    // If lagging behind, advance time before processing models.
-                    while (now_secs > clock.t1) {
-                        clock.advance(now_secs - clock.t1);
+            function delayTick(_sched, _clock, _next) {
+                if (entry) {
+                    sched       = _sched;
+                    clock       = _clock;
+                    next        = _next;
+                    startTime   = clock.t1r;
+                    entry       = false;
+                } else {
+                    clock.tick();
+                }
+
+                var endTime = startTime + dt.valueOf();
+
+                // If lagging behind, advance time before processing models.
+                while (now_secs > clock.t1) {
+                    clock.advance(now_secs - clock.t1);
+                }
+
+                if (clock.t2r < endTime) {
+                    if (callback) {
+                        callback(clock, clock.t1r, clock.t2r, startTime, endTime);
                     }
 
-                    if (clock.t2r < endTime) {
-                        if (callback) {
-                            callback(clock, clock.t1r, clock.t2r, startTime, endTime);
-                        }
-                        schedule(function (sched, clockT) {
-                            sched.perform(tick, clock.tick());
-                        });
-                    } else {
-                        if (callback && endTime >= clock.t1r) {
-                            callback(clock, clock.t1r, endTime, startTime, endTime);
-                        }
-                        if (clock.t2r > clock.t1r) {
-                            sched.perform(next, clock.nudgeToRel(endTime), sched.stop);
-                        } else {
-                            sched.perform(next, clock, sched.stop);
-                        }
+                    schedule(delayTick);
+                } else {
+                    if (callback && endTime >= clock.t1r) {
+                        callback(clock, clock.t1r, endTime, startTime, endTime);
                     }
-                }(sched, clock));
-            };
+                    
+                    entry = true; // Moving on to next.
+                    
+                    sched.perform(next, clock.t2r > clock.t1r ? clock.nudgeToRel(endTime) : clock, sched.stop);
+                }
+            }
+
+            return delayTick;
         }
 
         // ### seq (internal)
