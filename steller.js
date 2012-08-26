@@ -749,7 +749,8 @@ org.anclab.steller = org.anclab.steller || {};
         function delay(dt, callback) {
             return function (sched, clock, next) {
                 var startTime = clock.t1r;
-                (function tick(sched, clock) {
+
+                function tick(sched, clock) {
                     var endTime = startTime + dt.valueOf();
 
                     // If lagging behind, advance time before processing models.
@@ -761,9 +762,7 @@ org.anclab.steller = org.anclab.steller || {};
                         if (callback) {
                             callback(clock, clock.t1r, clock.t2r, startTime, endTime);
                         }
-                        schedule(function (sched, clockT) {
-                            sched.perform(tick, clock.tick());
-                        });
+                        schedule(poll);
                     } else {
                         if (callback && endTime >= clock.t1r) {
                             callback(clock, clock.t1r, endTime, startTime, endTime);
@@ -774,7 +773,13 @@ org.anclab.steller = org.anclab.steller || {};
                             sched.perform(next, clock, sched.stop);
                         }
                     }
-                }(sched, clock));
+                }
+
+                function poll(sched) {
+                    sched.perform(tick, clock.tick());
+                }
+
+                tick(sched, clock);
             };
         }
 
