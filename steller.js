@@ -818,15 +818,11 @@ org.anclab.steller = org.anclab.steller || {};
                     sched.perform(next, clock, sh.stop);
                 }
 
-                var loop_model = sched.track(sched.dynamic(function () {
+                var stoppableModel = sched.track(sched.dynamic(function () {
                     return flag.valueOf() ? sched.cont : _break;
                 }), model);
 
-                function inner_looper(sched, clock, _) {
-                    sched.perform(loop_model, clock, inner_looper);
-                }
-
-                sched.perform(inner_looper, clock, next);
+                sched.perform(loop(stoppableModel), clock, next);
             };
         }
 
