@@ -1165,6 +1165,14 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
+        // A dynamic model that randomly chooses one from the given array of models
+        // every time it is played.
+        function choice(models) {
+            return dynamic(function () {
+                return models[Math.floor(Math.random() * models.length)];
+            });
+        }
+
         self.audioContext   = audioContext;
         self.perform        = perform;
         self.cancel         = cancel;
@@ -1183,6 +1191,7 @@ org.anclab.steller = org.anclab.steller || {};
         self.log            = log;
         self.anim           = anim;
         self.rate           = rate;
+        self.choice         = choice;
 
         return self;
     }
