@@ -364,6 +364,13 @@ org.anclab.steller = org.anclab.steller || {};
         //  provide a 'value' field in the spec. That value will be
         //  used as the default.
         //
+        //  Enumerations: Instead of a numeric parameter, you can specify
+        //  an enumeration using `spec.enum = ["one", "two", ...]`. The strings
+        //  have to be unique within the enumeration set. The value of such
+        //  an enumeration can be set either symbolically (as string) or 
+        //  numerically (range [1,N]). The retrieved value will always be
+        //  a string.
+        //
         function define(spec, name) {
             name = name || spec.name;
             validName(name);
@@ -378,9 +385,50 @@ org.anclab.steller = org.anclab.steller || {};
             var watchers = [];
             spec.watchers = watchers;
 
-            function limit(val) {
-                return Math.max(spec.min, Math.min(val, spec.max));
-            }
+            var limit = (function () {
+                if ('enum' in spec) {
+                    var symbolToIx = {}, ixToSymbol = {}, maxEnum = spec.enum.length;
+
+                    // Store the enumeration symbols in a hash for quick checking and verification.
+                    spec.enum.forEach(function (sym, i) {
+                        if (symbolToIx[sym]) {
+                            throw new Error("Duplicate symbol in enumeration array for [" + spec.name + "]");
+                        }
+
+                        symbolToIx[sym] = i + 1;
+                        ixToSymbol[i + 1] = sym;
+                    });
+
+                    // A enumeration's value can be set either numerically
+                    // (in the range [1,N]) or symbolically.
+                    var limiters = {
+                        "number": function (val) {
+                            if (val < 1 || val > maxEnum) {
+                                throw new Error("Enumeration [" + spec.name + "] out of range");
+                            }
+
+                            return ixToSymbol[val];
+                        },
+                        "string": function (val) {
+                            if (!symbolToIx[val]) {
+                                throw new Error("Invalid enumeration symbol for [" + spec.name + "]");
+                            }
+
+                            return val;
+                        }
+                    };
+
+                    return function limitEnum(val) {
+                        return limiters[typeof(val)](val);
+                    };
+                } else if ('min' in spec || 'max' in spec) {
+                    return function limitNumeric(val) {
+                        return Math.max(spec.min, Math.min(val, spec.max));
+                    };
+                } else {
+                    return function identity(val) { return val; };
+                }
+            }());
 
             function observe(val) {
                 var i, N;
