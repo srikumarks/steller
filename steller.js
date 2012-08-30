@@ -1084,7 +1084,9 @@ org.anclab.steller = org.anclab.steller || {};
                          * and ending values over the duration. */
                     v1 = arguments[2];
                     v2 = arguments[3];
-                    afunc = function (f) { return v1.valueOf() + f * (v2.valueOf() - v1.valueOf()); };
+                    afunc = function (f) { 
+                        return (1 - f ) * v1.valueOf() + f * v2.valueOf(); 
+                    };
                     break;
                 case 5: /* Third and fourth are v1, and v2 and fifth is
                          * a function(fractionalTime) whose return value is
@@ -1093,7 +1095,11 @@ org.anclab.steller = org.anclab.steller || {};
                     v1 = arguments[2];
                     v2 = arguments[3];
                     func = arguments[4];
-                    afunc = function (f) { return v1.valueOf() + func(f) * (v2.valueOf() - v1.valueOf()); };
+                    afunc = function (f) { 
+                        var f = func(f);
+                        return (1 - f) * v1.valueOf() + f * v2.valueOf();
+                    };
+
                     break;
                 default:
                     throw new Error("Invalid arguments to anim()");
