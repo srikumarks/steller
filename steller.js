@@ -1111,7 +1111,7 @@ org.anclab.steller = org.anclab.steller || {};
                     var dt = endTime - startTime;
                     var t1f, t2f;
                     if (t1 <= startTime) {
-                        t1f = dt > instant_secs ? (t1 - startTime) / dt : 1;
+                        t1f = dt > instant_secs ? (t1 - startTime) / dt : 0;
                         param.setValueAtTime(afunc(t1f), clock.rel2abs(t1));
                     }
 
