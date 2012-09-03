@@ -1490,6 +1490,114 @@ org.anclab.steller = org.anclab.steller || {};
         return this.t1r + (abs - this.t1) * this.rate.valueOf();
     };
 
+
+    var UI = (function (UI) {
+
+        function round(n) {
+            var m = n % 1;
+            var f = n - m;
+            var k = Math.pow(10, 4 - Math.min(3, ('' + f).length));
+            return Math.round(n * k) / k;
+        }
+
+        function curveFn(curve) {
+            if (curve) {
+                if (curve === 'linear' ||curve === 'log') {
+                    return Parameterize[curve + 'Curve'];
+                } else {
+                    return curve;
+                }
+            } else {
+                return Parameterize.linearCurve;
+            }
+        }
+
+        function insertBeforeEnd(target) {
+            return function (e) {
+                target.insertAdjacentElement('beforeend', e);
+            };
+        }
+
+        // Makes a simple UI with sliders for the parameters exposed by the model.
+        // The return value is a div element that can be inserted into some DOM part.
+        // This element is also stored in "model.ui" for reuse. If one already exists,
+        // a new one is not created.
+        UI.basicUI = function (document, model, sectionLabel) {
+            if (model.ui) {
+                return model.ui;
+            }
+
+            var div = document.createElement('div');
+            if (sectionLabel) {
+                div.insertAdjacentHTML('beforeend', '<p><b>' + sectionLabel + '</b></p>');
+            }
+
+            var specs = model.params.specs;
+            Object.keys(specs).forEach(function (paramName) {
+                var spec = specs[paramName];
+
+                if ('min' in spec && 'max' in spec) {
+                    // Only expose numeric parameters for the moment.
+                    var cont = document.createElement('div');
+                    var label = document.createElement('span');
+                    var valueDisp = document.createElement('span');
+                    label.innerText = paramName + ': ';
+                    label.style.width = '100px';
+                    label.style.display = 'inline-block';
+                    label.style.textAlign = 'left';
+
+                    var slider = document.createElement('input');
+                    slider.type = 'range';
+                    slider.min = 0.0;
+                    slider.max = 1.0;
+                    slider.step = 0.001;
+
+                    var curve = curveFn(spec.curve);
+                    var units = spec.units ? ' ' + spec.units : '';
+
+                    slider.value = curve(spec);
+                    valueDisp.innerText = ' (' + round(spec.getter()) + units + ')';
+
+                    slider.changeModelParameter = function (e) {
+                        // Slider value changed. So change the model parameter.
+                        // Use curve() to map the [0,1] range of the slider to
+                        // the parameter's range.
+                        model[paramName].value = curve(spec, parseFloat(this.value));
+                    };
+
+                    slider.changeSliderValue = function (value) {
+                        // Model value changed. So change the slider. Use curve()
+                        // to map the parameter value to the slider's [0,1] range.
+                        slider.value = curve(spec);
+                        valueDisp.innerText = ' (' + round(value) + units + ')';
+                    };
+                    
+                    slider.addEventListener('change', slider.changeModelParameter);
+                    model.params.watch(paramName, slider.changeSliderValue);
+
+                    [label, slider, valueDisp].forEach(insertBeforeEnd(cont));
+                    div.insertAdjacentElement('beforeend', cont);
+                }
+            });
+
+            return model.ui = div;
+        };
+
+        return UI;
+    }({}));
+
+    // Some utility functions.
+    var Util = {};
+
+    Util.p2f = function (pitch) {
+        return 440 * Math.pow(2, (pitch.valueOf() - 69) / 12);
+    };
+    
+    Util.f2p = function (f) {
+        var p = 69 + 12 * Math.log(f.valueOf() / 440) / Math.LN2;
+        return Math.round(p * 100) / 100; // Cents level precision is enough.
+    };
+
     steller.SoundModel    = SoundModel;
     steller.GraphNode     = GraphNode;
     steller.Parameterize  = Parameterize;
@@ -1497,5 +1605,7 @@ org.anclab.steller = org.anclab.steller || {};
     steller.Clock         = Clock;
     steller.PeriodicTimer = PeriodicTimer;
     steller.JSNodeTimer   = JSNodeTimer;
+    steller.UI            = UI;
+    steller.Util          = Util;
 
 }(window, org.anclab.steller));
