@@ -579,11 +579,12 @@ org.anclab.steller = org.anclab.steller || {};
         return obj;
     }
 
-    // Use for "curve:" field of spec. This is not used internally at all, but
+    // Use for "mapping:" field of spec. This is not used internally at all, but
     // intended for UI use.
-    //
-    // Condition: spec.max > spec.min;
-    Parameterize.linearCurve = function (spec, f) {
+    Parameterize.mappings = {};
+
+    // Condition: spec.max > spec.min
+    Parameterize.mappings.linear = function (spec, f) {
         if (arguments.length > 1) {
             return spec.min + f * (spec.max - spec.min);
         } else {
@@ -592,7 +593,7 @@ org.anclab.steller = org.anclab.steller || {};
     };
 
     // Condition: spec.max > spec.min > 0
-    Parameterize.logCurve = function (spec, f) {
+    Parameterize.mappings.log = function (spec, f) {
         var lmin = Math.log(spec.min);
         var lmax = Math.log(spec.max);
         if (arguments.length > 1) {
@@ -1500,15 +1501,11 @@ org.anclab.steller = org.anclab.steller || {};
             return Math.round(n * k) / k;
         }
 
-        function curveFn(curve) {
-            if (curve) {
-                if (curve === 'linear' ||curve === 'log') {
-                    return Parameterize[curve + 'Curve'];
-                } else {
-                    return curve;
-                }
+        function mappingFn(mapping) {
+            if (typeof(mapping) === 'string') {
+                return Parameterize.mappings[mapping];
             } else {
-                return Parameterize.linearCurve;
+                return mapping || Parameterize.mappings.linear;
             }
         }
 
@@ -1552,23 +1549,23 @@ org.anclab.steller = org.anclab.steller || {};
                     slider.max = 1.0;
                     slider.step = 0.001;
 
-                    var curve = curveFn(spec.curve);
+                    var mapping = mappingFn(spec.mapping);
                     var units = spec.units ? ' ' + spec.units : '';
 
-                    slider.value = curve(spec);
+                    slider.value = mapping(spec);
                     valueDisp.innerText = ' (' + round(spec.getter()) + units + ')';
 
                     slider.changeModelParameter = function (e) {
                         // Slider value changed. So change the model parameter.
                         // Use curve() to map the [0,1] range of the slider to
                         // the parameter's range.
-                        model[paramName].value = curve(spec, parseFloat(this.value));
+                        model[paramName].value = mapping(spec, parseFloat(this.value));
                     };
 
                     slider.changeSliderValue = function (value) {
                         // Model value changed. So change the slider. Use curve()
                         // to map the parameter value to the slider's [0,1] range.
-                        slider.value = curve(spec);
+                        slider.value = mapping(spec);
                         valueDisp.innerText = ' (' + round(value) + units + ')';
                     };
                     
