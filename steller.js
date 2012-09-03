@@ -421,10 +421,11 @@ org.anclab.steller = org.anclab.steller || {};
                     return function limitEnum(val) {
                         return limiters[typeof(val)](val);
                     };
-                } else if ('min' in spec || 'max' in spec) {
-                    return function limitNumeric(val) {
-                        return Math.max(spec.min, Math.min(val, spec.max));
-                    };
+                // DECISION: Disable numeric limiting behaviour. Use min/max as UI suggestions instead.
+                // } else if ('min' in spec || 'max' in spec) {
+                //     return function limitNumeric(val) {
+                //         return Math.max(spec.min, Math.min(val, spec.max));
+                //     };
                 } else {
                     return function identity(val) { return val; };
                 }
