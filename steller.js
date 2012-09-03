@@ -439,6 +439,10 @@ org.anclab.steller = org.anclab.steller || {};
                 return val;
             }
 
+            function changeAndObserve(param, val) {
+                return (val !== param.value) ? observe(param.value = val) : val;
+            }
+
             spec.getter = spec.getter 
                 || (spec.audioParam && function () { return spec.audioParam.value; })
                 || ('value' in spec && function () { return spec.value; });
@@ -453,11 +457,11 @@ org.anclab.steller = org.anclab.steller || {};
                 }(spec.setter));
             } else if (spec.audioParam) {
                 spec.setter = function (val) {
-                    return observe(spec.audioParam.value = limit(val));
+                    return changeAndObserve(spec.audioParam, limit(val));
                 };
             } else if ('value' in spec) {
                 spec.setter = function (val) {
-                    return observe(spec.value = limit(val));
+                    return changeAndObserve(spec, limit(val));
                 };
             }
 
