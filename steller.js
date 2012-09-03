@@ -579,6 +579,30 @@ org.anclab.steller = org.anclab.steller || {};
         return obj;
     }
 
+    // Use for "curve:" field of spec. This is not used internally at all, but
+    // intended for UI use.
+    //
+    // Condition: spec.max > spec.min;
+    Parameterize.linearCurve = function (spec, f) {
+        if (arguments.length > 1) {
+            return spec.min + f * (spec.max - spec.min);
+        } else {
+            return (spec.getter() - spec.min) / (spec.max - spec.min);
+        }
+    };
+
+    // Condition: spec.max > spec.min > 0
+    Parameterize.logCurve = function (spec, f) {
+        var lmin = Math.log(spec.min);
+        var lmax = Math.log(spec.max);
+        if (arguments.length > 1) {
+            return Math.exp(lmin + f * (lmax - lmin));
+        } else {
+            var lval = Math.log(spec.getter());
+            return (lval - lmin) / (lmax - lmin);
+        }
+    };
+
     // Utility for prohibiting parameter names such as "constructor",
     // "hasOwnProperty", etc.
     var dummyObject = {params: true, length: 1};
