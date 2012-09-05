@@ -172,7 +172,7 @@ org.anclab.steller = org.anclab.steller || {};
     //
     function SoundModel(obj, inputs, outputs) {
         return Parameterize(GraphNode(obj, inputs, outputs));
-    };
+    }
 
     //
     // ## GraphNode
@@ -443,9 +443,9 @@ org.anclab.steller = org.anclab.steller || {};
                 return (val !== param.value) ? observe(param.value = val) : val;
             }
 
-            spec.getter = spec.getter 
-                || (spec.audioParam && function () { return spec.audioParam.value; })
-                || ('value' in spec && function () { return spec.value; });
+            spec.getter = (spec.getter ||
+                (spec.audioParam && function () { return spec.audioParam.value; }) ||
+                ('value' in spec && function () { return spec.value; }));
 
             if (spec.setter) {
                 /* Add support for limiting the parameter value 
@@ -559,7 +559,7 @@ org.anclab.steller = org.anclab.steller || {};
             }
 
             return p;
-        };
+        }
 
         //
         // Exposes the named parameter in params using a new name.
@@ -798,7 +798,9 @@ org.anclab.steller = org.anclab.steller || {};
         // This is the "one" of the algebra. Placing it anywhere in
         // a sequence has no consequence on it.
         function cont(sched, clock, next) {
-            next && sched.perform(next, clock, stop);
+            if (next) {
+                sched.perform(next, clock, stop);
+            }
         }
 
         // ### delay
@@ -934,7 +936,7 @@ org.anclab.steller = org.anclab.steller || {};
                         /* All models have finished. */
                         sched.perform(next, clock.jumpTo(clockJ.t1), sched.stop);
                     }
-                };
+                }
 
                 /* Start off all models. */
                 models.forEach(function (model) {
@@ -1064,7 +1066,7 @@ org.anclab.steller = org.anclab.steller || {};
                 callback(clock);
                 sched.perform(next, clock, stop);
             };
-        };
+        }
 
         // ### log
         //
@@ -1125,8 +1127,8 @@ org.anclab.steller = org.anclab.steller || {};
                     v1 = arguments[2];
                     v2 = arguments[3];
                     func = arguments[4];
-                    afunc = function (f) { 
-                        var f = func(f);
+                    afunc = function (frac) { 
+                        var f = func(frac);
                         return (1 - f) * v1.valueOf() + f * v2.valueOf();
                     };
 
@@ -1261,10 +1263,10 @@ org.anclab.steller = org.anclab.steller || {};
     //
 
     function PeriodicTimer(callback, precision_ms) {
-        var requestAnimationFrame = (window.requestAnimationFrame 
-                || window.mozRequestAnimationFrame 
-                || window.webkitRequestAnimationFrame 
-                || window.msRequestAnimationFrame);
+        var requestAnimationFrame = (window.requestAnimationFrame ||
+                window.mozRequestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.msRequestAnimationFrame);
 
         var self = this;
         var running = false;
