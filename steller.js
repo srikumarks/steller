@@ -386,11 +386,11 @@ org.anclab.steller = org.anclab.steller || {};
             spec.watchers = watchers;
 
             var limit = (function () {
-                if ('enum' in spec) {
-                    var symbolToIx = {}, ixToSymbol = {}, maxEnum = spec.enum.length;
+                if ('options' in spec) {
+                    var symbolToIx = {}, ixToSymbol = {}, maxEnum = spec.options.length;
 
                     // Store the enumeration symbols in a hash for quick checking and verification.
-                    spec.enum.forEach(function (sym, i) {
+                    spec.options.forEach(function (sym, i) {
                         if (symbolToIx[sym]) {
                             throw new Error("Duplicate symbol in enumeration array for [" + spec.name + "]");
                         }
