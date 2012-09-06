@@ -12,12 +12,12 @@ namespace `org.anclab.steller`.
 Encapsulates a sub-graph between a set of input nodes and a set of output
 nodes. The two primary methods it adds are -
 
+- `connect(targetGraphNode, outPinIx, inPinIx)`
+- `disconnect(targetGraphNode, outPinIx)`
+
 *Usage*: `var obj = org.anclab.steller.GraphNode(obj, [in1, in2, ...], [out1, out2, ...])` where
 `obj` is an object to turn into a `GraphNode`, `inX` are input nodes and `outY`
 are output nodes (either `AudioNode` objects or `GraphNode`s).
-
-- `connect(targetGraphNode, outPinIx, inPinIx)`
-- `disconnect(targetGraphNode, outPinIx)`
 
 ## Parameterize
 
@@ -36,7 +36,6 @@ a `params` field through which these parameters can be added and manipulated.
 
 Ex:
 
-    var obj = org.anclab.steller.Parameterize({});
     obj.params.define({name: "griffinStrength", min: 0, max: 100, value: 20});
     obj.griffinStrength.value = 40;
     console.log(obj.griffinStrength.valueOf()); // Prints 40.
@@ -80,8 +79,6 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.cont` is a model that is a no-op when encountered in a track.
 - `sh.track(model1, model2, ...)` makes a sequence for performing the given
   models one after another.
-- `sh.fire(function (clock) {...})` will cause the given callback to be called
-  at the time the model is performed.
 - `sh.delay(dur, [callback])` will cause the models that follow a `delay` in a
   sequence to occur at a later time.  If a `callback` is specified, it will be
   called like `callback(clock, t1r, t2r, startTime, endTime)` for every "tick"
@@ -99,6 +96,9 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.dynamic(function (clock) { return model; })` makes a "dynamic model" that
   will behave like whatever `model` the given function returns, at the time the
   dynamic model gets to run.
+- `sh.fire(function (clock) {...})` will cause the given callback to be called
+  at the time the model is performed. The resultant action itself has zero
+  duration.
 - `sh.anim(param, duration, v1, v2)` animates the parameter from value `v1` to
   value `v2` over the given `duration` using linear interpolation.
 - `sh.anim(param, duration, function (t) { return value; })` will assign the
@@ -107,7 +107,10 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.anim(param, duration, v1, v2, function (t1) { return t2; })` will use the
   given interpolation function (domain  = `[0,1]`, range = `[0,1]`) to generate
   parameter value s between `v1` and `v2`.
-- `sh.rate(r)` a model that changes the rate of passage of pseudo time through
-  the track in which it occurs to the given `r`. `r = 1` means that the virtual
-  time is itself in seconds.
- 
+- `sh.rate(r)` changes the rate of passage of pseudo time through the track in
+  which it occurs to the given `r`. `r = 1` means that the virtual time is
+  itself in seconds.
+- `sh.choice(models)` makes a model that will randomly behave like one of the
+  models in the given array every time it is invoked. This is a simple use of
+  `dynamic`.
+
