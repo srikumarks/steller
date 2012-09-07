@@ -46,14 +46,11 @@
 // ## Design ##
 // 
 // [Steller] realizes the important aspects of sound models mentioned above using
-// the `GraphNode` and `Parameterize` object transformers. These functions are
-// like "mixin" classes. They can impart node-like behaviour and the ability to have
-// animatable parameters to a given object. Therefore a "base" sound model is simply
-// expressed as -
+// the `GraphNode` object transformer and `Param` objects. `GraphNode` can impart
+// node-like behaviour to an object. `Param` objects can be animated, watched and shared.
+// Therefore a "base" sound model is simply `GraphNode`.
 // 
-//     function SoundModel(obj, inputs, outputs) {
-//         return Parameterize(GraphNode(obj, inputs, outputs));
-//     }
+//     var SoundModel = GraphNode;
 // 
 // We also need the ability to schedule these sounds. This facility is needed both
 // for internal use by sound models as well as for the sound model user. This
@@ -66,13 +63,6 @@
 // The `GraphNode` encapsulates a signal processing graph and lets you use it as a
 // single node in a larger graph. This way, larger graphs can be built using
 // encapsulated smaller graphs. 
-// 
-// #### Parameterize
-//
-// `Parameterize(object)` will add a `params` field to `object` that has
-// methods for exposing parameters directly on `object`. You can either
-// create new parameters or re-expose parameters part of other objects. You can animate
-// these parameters and "watch" them for changes as well.
 // 
 // #### The Scheduler
 // 
@@ -170,9 +160,7 @@ org.anclab.steller = org.anclab.steller || {};
     //
     // Sound models are scheduled using the Scheduler (org.anclab.steller.Scheduler)
     //
-    function SoundModel(obj, inputs, outputs) {
-        return Parameterize(GraphNode(obj, inputs, outputs));
-    }
+    var SoundModel = GraphNode;
 
     //
     // ## GraphNode
@@ -280,329 +268,14 @@ org.anclab.steller = org.anclab.steller || {};
         return node;
     }
 
-
-    //
-    // ## Parameterize 
-    //
-    // Adds a "params" field to the object which contains 
-    // information about the object's parameters and methods
-    // for defining and exposing params on the object.
-    //
-    // obj.params.specs 
-    //      Object giving specifications of parameters.
-    // obj.params.define({..spec..})
-    //      Defines a parameter on "obj" according to the given spec.
-    // obj.params.expose(obj2, ..optnames..)
-    //      Exposes parameters in obj2 as parameters of obj.
-    // obj.params.exposeAs(obj2, name, newName)
-    //      Exposes an existing parameter of obj2, but gives it a new name
-    //      in obj.
-    //
-    // ### Usage
-    //
-    //      var obj = ...
-    //      Parameterize(obj);
-    //      obj.params.define({name: "gain", min: 0.01, max: 1.0, value: 0.25});
-    //      // See `define` below for more ways to specify a parameter.
-    //
-    //      // Setting a parameter's value.
-    //      obj.gain.value = 0.5;
-    //
-    // ### Chaining
-    //  
-    //  The functions exposed via obj.params are chainable. For example,
-    //
-    //      obj.params.define({name: "blah", ...}).watch("blah", function (val) {...})
-    //
-    //  ... and so on. The params object holds a reference to the object whose parameters
-    //  it manages in its 'object' field, so if you wish to get the managed object at the end
-    //  of the chain, you can write -
-    //
-    //      obj.params.define({name: "blah", ...}).watch("blah", function (val) {...}).object
-    //
-    function Parameterize(obj) {
-        var p = {};
-        var specs = {};
-        p.specs = specs;
-        obj.params = p;
-
-        function specifyParam(spec) {
-            specs[spec.name] = spec;
-
-            /*
-             * A parameter's value is accessed as obj.myParam.value.
-             * Also supports the "valueOf" protocol.
-             */
-            var pobj = {};
-            pobj.__defineGetter__('value', spec.getter);
-            pobj.__defineSetter__('value', spec.setter);
-            pobj.valueOf = spec.getter;
-
-            obj[spec.name] = pobj;
-
-            return p;
-        }
-
-        //
-        // ### define
-        //
-        // Adds a new parameter definition.
-        //
-        //      spec = {
-        //          name: "paramname",
-        //          min: smallestValue,
-        //          max: largestValue,
-        //          getter: function () { return actualValue; },
-        //          setter: function (val) { actualValue = val; return val; }
-        //      }
-        //
-        //  As a shorcut, you can provide an "audioParam" field
-        //  and pass an AudioParam object there instead of giving a
-        //  getter and setter.
-        //
-        //  If you just want to define a raw parameter, you can just
-        //  provide a 'value' field in the spec. That value will be
-        //  used as the default.
-        //
-        //  Enumerations: Instead of a numeric parameter, you can specify
-        //  an enumeration using `spec.enum = ["one", "two", ...]`. The strings
-        //  have to be unique within the enumeration set. The value of such
-        //  an enumeration can be set either symbolically (as string) or 
-        //  numerically (range [1,N]). The retrieved value will always be
-        //  a string.
-        //
-        function define(spec, name) {
-            name = name || spec.name;
-            validName(name);
-
-            /* Make another spec so that we don't change the original 
-             * when we add stuff to it. */
-            spec = Object.create(spec);
-            spec.name = name; // Given or new name.
-
-            /* Keep around a list of watchers - i.e. callbacks to call
-             * when the value of the parameter is set. */
-            var watchers = [];
-            spec.watchers = watchers;
-
-            var limit = (function () {
-                if ('options' in spec) {
-                    var symbolToIx = {}, ixToSymbol = {}, maxEnum = spec.options.length;
-
-                    // Store the enumeration symbols in a hash for quick checking and verification.
-                    spec.options.forEach(function (sym, i) {
-                        if (symbolToIx[sym]) {
-                            throw new Error("Duplicate symbol in enumeration array for [" + spec.name + "]");
-                        }
-
-                        symbolToIx[sym] = i + 1;
-                        ixToSymbol[i + 1] = sym;
-                    });
-
-                    // A enumeration's value can be set either numerically
-                    // (in the range [1,N]) or symbolically.
-                    var limiters = {
-                        "number": function (val) {
-                            if (val < 1 || val > maxEnum) {
-                                throw new Error("Enumeration [" + spec.name + "] out of range");
-                            }
-
-                            return ixToSymbol[val];
-                        },
-                        "string": function (val) {
-                            if (!symbolToIx[val]) {
-                                throw new Error("Invalid enumeration symbol for [" + spec.name + "]");
-                            }
-
-                            return val;
-                        }
-                    };
-
-                    return function limitEnum(val) {
-                        return limiters[typeof(val)](val);
-                    };
-                // DECISION: Disable numeric limiting behaviour. Use min/max as UI suggestions instead.
-                // } else if ('min' in spec || 'max' in spec) {
-                //     return function limitNumeric(val) {
-                //         return Math.max(spec.min, Math.min(val, spec.max));
-                //     };
-                } else {
-                    return function identity(val) { return val; };
-                }
-            }());
-
-            function observe(val) {
-                var i, N;
-                for (i = 0, N = watchers.length; i < N; ++i) {
-                    watchers[i](val, name, obj);
-                }
-                return val;
-            }
-
-            function changeAndObserve(param, val) {
-                return (val !== param.value) ? observe(param.value = val) : val;
-            }
-
-            spec.getter = (spec.getter ||
-                (spec.audioParam && function () { return spec.audioParam.value; }) ||
-                ('value' in spec && function () { return spec.value; }));
-
-            if (spec.setter) {
-                /* Add support for limiting the parameter value 
-                 * when it is being set. */
-                spec.setter = (function (givenSetter) {
-                    return function (val) {
-                        return observe(givenSetter(limit(val)));
-                    };
-                }(spec.setter));
-            } else if (spec.audioParam) {
-                spec.setter = function (val) {
-                    return changeAndObserve(spec.audioParam, limit(val));
-                };
-            } else if ('value' in spec) {
-                spec.setter = function (val) {
-                    return changeAndObserve(spec, limit(val));
-                };
-            }
-
-            return specifyParam(spec);
-        }
-
-        // ### watch
-        //
-        // Installs the callback (= function (value, paramName, object) {}) as an observer 
-        // that gets called whenever the parameter's value gets set. Useful for updating
-        // GUI controls or determining the values of derived parameters.
-        //
-        // The argument order is so that you can write param-specific callbacks as 
-        // function (value) {...}, or object-specific callbacks as 
-        // function (value, paramname) {...} or generic callbacks as 
-        // function (value, paramName, object) {...}. 
-        //
-        // Returns the main object for call chaining.
-        //
-        function watch(name, callback) {
-            var spec = specs[name];
-            if (!spec) {
-                throw new Error("Invalid parameter name - " + name);
-            }
-
-            var watchers = spec.watchers, i, N;
-
-            /* Make sure the callback isn't already installed. */
-            for (i = 0, N = watchers.length; i < N; ++i) {
-                if (watchers[i] === callback) {
-                    return p;
-                }
-            }
-
-            watchers.push(callback);
-            return p;
-        }
-
-        // ### unwatch
-        //
-        // Removes the given callback as an observer for the parameter.
-        // If no callback is specified, it removes *all* observers.
-        // Returns obj for call chaining.
-        //
-        function unwatch(name, callback) {
-            var spec = specs[name];
-            if (!spec) {
-                throw new Error("Invalid parameter name - " + name);
-            }
-
-            var watchers = spec.watchers;
-
-            if (arguments.length < 2 || !callback) {
-                /* Remove all watchers. */
-                watchers.splice(0, watchers.length);
-                return p;
-            }
-
-            /* Remove the installed watcher. Note that we only need
-             * to check for one watcher because watch() will never 
-             * add duplicates. */
-            for (var i = watchers.length - 1; i >= 0; --i) {
-                if (watchers[i] === callback) {
-                    watchers.splice(i, 1);
-                    return p;
-                }
-            }
-
-            return p;            
-        }
-
-        // ### expose and exposeAs
-        //
-        // Makes the parameters in another object available through
-        // this one as well.
-        //
-        // params.exposeParams(otherParams, 'name1', 'name2', ...)
-        //
-        // If you omit the names, all parameters will be exposed.
-        //
-        function expose(obj2) {
-            var i, N, spec;
-            console.assert(obj2 && obj2.params && obj2.params.specs);
-
-            if (arguments.length === 1) {
-                /* Expose all params from the given set. */
-                Object.keys(obj2.params.specs).forEach(function (name) {
-                    define(obj2.params.specs[name]);
-                });
-            } else {
-                /* Expose only parameters with the given names. */
-                for (i = 1, N = arguments.length; i < N; ++i) {
-                    define(obj2.params.specs[arguments[i]]);
-                }
-            }
-
-            return p;
-        }
-
-        //
-        // Exposes the named parameter in params using a new name.
-        // Can only do one at a time.
-        //
-        function exposeAs(obj2, name, newName) {
-            return define(obj2.params.specs[name], newName);
-        }
-
-        p.define    = define;
-        p.watch     = watch;
-        p.unwatch   = unwatch;
-        p.expose    = expose;
-        p.exposeAs  = exposeAs;
-        p.object    = obj;
-
-        return obj;
-    }
-
-    // Use for "mapping:" field of spec. This is not used internally at all, but
-    // intended for UI use.
-    Parameterize.mappings = {};
-
-    // Condition: spec.max > spec.min
-    Parameterize.mappings.linear = function (spec, f) {
-        if (arguments.length > 1) {
-            return spec.min + f * (spec.max - spec.min);
-        } else {
-            return (spec.getter() - spec.min) / (spec.max - spec.min);
+    // Takes an array of nodes and connects them up in a chain.
+    GraphNode.chain = function (nodes) {
+        var i, N;
+        for (i = 0, N = nodes.length - 1; i < N; ++i) {
+            nodes[i].connect(nodes[i+1]);
         }
     };
 
-    // Condition: spec.max > spec.min > 0
-    Parameterize.mappings.log = function (spec, f) {
-        var lmin = Math.log(spec.min);
-        var lmax = Math.log(spec.max);
-        if (arguments.length > 1) {
-            return Math.exp(lmin + f * (lmax - lmin));
-        } else {
-            var lval = Math.log(spec.getter());
-            return (lval - lmin) / (lmax - lmin);
-        }
-    };
 
     // Utility for prohibiting parameter names such as "constructor",
     // "hasOwnProperty", etc.
@@ -614,6 +287,265 @@ org.anclab.steller = org.anclab.steller || {};
 
         return name;
     }
+
+    //
+    // Param(spec)
+    //
+    // A "class" that reifies a model parameter as an independent object.
+    // You create a parameter like this -
+    //      model.paramName = Param({min: 0, max: 1, value: 0.5});
+    //      model.paramName = Param({min: 0, max: 1, audioParam: anAudioParam});
+    //      model.paramName = Param({min: 0, max: 1, getter: g, setter: s});
+    //      model.paramName = Param({options: ["one", "two", "three"], value: "one"});
+    //
+    // You can use Param.names(model) to get the exposed parameter names.
+    //
+    // You can get and set the value of a parameter like this -
+    //      model.paramName.value = 5;
+    //
+    // You can install a callback to be called when a parameter value changes -
+    //      model.paramName.watch(function (value, param) { ... });
+    //      model.paramName.unwatch(callback);
+    //      model.paramName.unwatch(); // Removes all callbacks.
+    //
+    function Param(spec) {
+        var self = Object.create(Param.prototype);
+        self.spec = spec = processOptionsParam(Object.create(spec));
+
+        var getter, setter;
+
+        if (spec.audioParam) {
+            self.audioParam = spec.audioParam;
+            getter = Param.getters.audioParam;
+            setter = Param.setters.audioParam;
+        } else if (spec.options) {
+            getter = Param.getters.value;
+            setter = Param.setters.option;
+        } else {
+            getter = Param.getters.value;
+            setter = Param.setters.value;
+        }
+
+        self.getter = spec.getter || getter;
+        self.setter = spec.setter || setter;
+
+        // Support the .valueOf() protocol.
+        self.valueOf = self.getter;
+
+        // Maintain a per-parameter list of watchers.
+        self.watchers = [];
+
+        if ('value' in spec) {
+            self.setter(spec.value);
+        }
+
+        return self;
+    }
+
+    // Take care of enumeration or "options" parameters.
+    function processOptionsParam(spec) {
+        if (spec.options) {
+            var hash = {};
+            spec.options.forEach(function (o, i) {
+                hash['option:' + o] = i + 1;
+            });
+
+            // Set a limiting function that validates the
+            // value being assigned to the parameter.
+            spec.limit = function (val) {
+                if (typeof val === 'number') {
+                    if (val >= 0 && val < spec.options.length) {
+                        return spec.options[val];
+                    } 
+
+                    throw new Error('Invalid enumeration index');
+                } 
+                
+                if (hash['option:' + val]) {
+                    return val;
+                }
+
+                throw new Error('Invalid enumeration value');
+            };
+        }
+        return spec;
+    }
+
+    Param.getters = {
+        value: function () {
+            return this._value;
+        },
+        audioParam: function () {
+            return this.audioParam.value;
+        }
+    };
+
+    Param.setters = {
+        value: function (v) {
+            return (this._value = v);
+        },
+        audioParam: function (v) {
+            return (this.audioParam.value = v);
+        },
+        option: function (v) {
+            return (this._value = this.spec.limit(v));
+        }
+    };
+
+    // Use for "mapping:" field of spec. This is not used internally at all, but
+    // intended for UI use.
+    Param.mappings = {};
+
+    // Condition: spec.max > spec.min
+    Param.mappings.linear = {
+        fromNorm: function (p, f) {
+            return p.spec.min + f * (p.spec.max - p.spec.min);
+        },
+        toNorm: function (p) {
+            return (p.value - p.spec.min) / (p.spec.max - p.spec.min);
+        }
+    };
+
+    // Condition: spec.max > spec.min > 0
+    Param.mappings.log = {
+        fromNorm: function (p, f) {
+            var spec = p.spec;
+            var lmin = Math.log(spec.min);
+            var lmax = Math.log(spec.max);
+            return Math.exp(lmin + f * (lmax - lmin));
+        },
+        toNorm: function (p) {
+            var spec = p.spec;
+            var lmin = Math.log(spec.min);
+            var lmax = Math.log(spec.max);
+            var lval = Math.log(p.value);
+            return (lval - lmin) / (lmax - lmin);
+        }
+    };
+
+    // Returns the names of all the exposed parameters of obj.
+    Param.names = function (obj) {
+        return Object.keys(obj).filter(function (k) {
+            return obj[k] instanceof Param;
+        });
+    };
+
+    // Bind one parameter to another. p2 is expected to 
+    // be a parameter. If p1 is a parameter, then bind sets
+    // things up so that updating p1 will cause p2 to be updated
+    // to the same value. If p1 is just a value, then bind() simply
+    // assigns its value to p2 once.
+    Param.bind = function (p1, p2) {
+        if (p1 instanceof Param) {
+            p1.watch(function (val) {
+                p2.value = val;
+            });
+
+            p2.value = p1.value;
+        } else if ('value' in p1) {
+            p2.value = p1.value;
+        } else {
+            p2.value = p1;
+        }
+
+        return Param;
+    };
+
+    // To get the value of a parameter p, use p.value
+    Param.prototype.__defineGetter__('value', function () {
+        return this.getter();
+    });
+
+    // To set the value of a parameter p, do 
+    //      p.value = v;
+    Param.prototype.__defineSetter__('value', function (val) {
+        if (val !== this.getter()) {
+            return observeParam(this, this.setter(val));
+        } else {
+            return val;
+        }
+    });
+
+    function observeParam(param, val) {
+        var i, N, watchers = param.watchers;
+        for (i = 0, N = watchers.length; i < N; ++i) {
+            watchers[i](val, param);
+        }
+        return val;
+    }
+
+    // Installs a callback that gets called whenever the parameter's
+    // value changes. The callback is called like this -
+    //      callback(value, paramObject);
+    Param.prototype.watch = function (callback) {
+        var i, N, watchers = this.watchers;
+
+        /* Make sure the callback isn't already installed. */
+        for (i = 0, N = watchers.length; i < N; ++i) {
+            if (watchers[i] === callback) {
+                return this;
+            }
+        }
+
+        watchers.push(callback);
+        return this;
+    };
+
+    // Removes the given callback, or if none given removes
+    // all installed watchers.
+    Param.prototype.unwatch = function (callback) {
+        var watchers = this.watchers;
+
+        if (arguments.length < 1 || !callback) {
+            /* Remove all watchers. */
+            watchers.splice(0, watchers.length);
+            return this;
+        }
+
+        /* Remove the installed watcher. Note that we only need
+         * to check for one watcher because watch() will never 
+         * add duplicates. */
+        for (var i = watchers.length - 1; i >= 0; --i) {
+            if (watchers[i] === callback) {
+                watchers.splice(i, 1);
+                return this;
+            }
+        }
+
+        return this;
+    };
+
+    // Can call to force an observer notification.
+    Param.prototype.changed = function () {
+        observeParam(this, this.getter());
+        return this;
+    };
+
+    // Makes an "alias" parameter - i.e. a parameter that 
+    // represents the same value, but has a different name.
+    // The alias is constructed such that p.alias("m").alias("n")
+    // is equivalent to p.alias("n") - i.e. the original
+    // parameter is the one being aliased all the time.
+    Param.prototype.alias = function (name, label) {
+        var self = this;
+
+        // Inherit from the original.
+        var p = Object.create(self);
+
+        // Rename it.
+        p.spec = Object.create(self.spec);
+        p.spec.name = name;
+        if (label) {
+            p.spec.label = label;
+        }
+
+        // Bind core methods to the original.
+        p.getter = function () { return self.getter(); };
+        p.setter = function (val) { return self.setter(val); };
+        p.alias = function (name, label) { return self.alias(name, label); };
+
+        return p;
+    };
 
     //
     // ## Scheduler
@@ -644,18 +576,17 @@ org.anclab.steller = org.anclab.steller || {};
     // Then you can play models already. Here is something that will keep
     // outputting 'fizz', 'buzz' alternately every 2 seconds.
     //
-    //      var p = Parameterize({});
-    //      p.params.define({name: 'dur', min: 0.01, max: 60, value: 2});
+    //      var dur = Param({min: 0.01, max: 60, value: 2});
     //      var fizzbuzz = sh.loop(sh.track([
-    //          sh.log('fizz'), sh.delay(p.dur), 
-    //          sh.log('buzz'), sh.delay(p.dur)
+    //          sh.log('fizz'), sh.delay(dur),
+    //          sh.log('buzz'), sh.delay(dur)
     //      ]));
     //      sh.play(fizzbuzz);
     // 
     // Now try changing the value of the duration parameter p.dur like below
     // while the fizzes and buzzes are being printed out --
     //      
-    //      p.dur.value = 1
+    //      dur.value = 1
     //
     function Scheduler(audioContext, options) {
         /* Make sure we don't clobber the global namespace accidentally. */
@@ -1505,9 +1436,9 @@ org.anclab.steller = org.anclab.steller || {};
 
         function mappingFn(mapping) {
             if (typeof(mapping) === 'string') {
-                return Parameterize.mappings[mapping];
+                return Param.mappings[mapping];
             } else {
-                return mapping || Parameterize.mappings.linear;
+                return mapping || Param.mappings.linear;
             }
         }
 
@@ -1531,16 +1462,23 @@ org.anclab.steller = org.anclab.steller || {};
                 div.insertAdjacentHTML('beforeend', '<p><b>' + sectionLabel + '</b></p>');
             }
 
-            var specs = model.params.specs;
-            Object.keys(specs).forEach(function (paramName) {
-                var spec = specs[paramName];
+            var specs = Param.names(model).map(function (k) {
+                var spec = Object.create(model[k].spec);
+                spec.name = spec.name || k;
+                spec.param = model[k];
+                return spec;
+            });
+
+            specs.forEach(function (spec) {
+                var paramName = spec.name;
+                var param = spec.param;
 
                 if ('min' in spec && 'max' in spec) {
                     // Only expose numeric parameters for the moment.
                     var cont = document.createElement('div');
                     var label = document.createElement('span');
                     var valueDisp = document.createElement('span');
-                    label.innerText = paramName + ': ';
+                    label.innerText = (spec.label || paramName) + ': ';
                     label.style.width = '100px';
                     label.style.display = 'inline-block';
                     label.style.textAlign = 'left';
@@ -1554,25 +1492,25 @@ org.anclab.steller = org.anclab.steller || {};
                     var mapping = mappingFn(spec.mapping);
                     var units = spec.units ? ' ' + spec.units : '';
 
-                    slider.value = mapping(spec);
-                    valueDisp.innerText = ' (' + round(spec.getter()) + units + ')';
+                    slider.value = mapping.toNorm(param);
+                    valueDisp.innerText = ' (' + round(param.value) + units + ')';
 
                     slider.changeModelParameter = function (e) {
                         // Slider value changed. So change the model parameter.
                         // Use curve() to map the [0,1] range of the slider to
                         // the parameter's range.
-                        model[paramName].value = mapping(spec, parseFloat(this.value));
+                        param.value = mapping.fromNorm(param, parseFloat(this.value));
                     };
 
                     slider.changeSliderValue = function (value) {
                         // Model value changed. So change the slider. Use curve()
                         // to map the parameter value to the slider's [0,1] range.
-                        slider.value = mapping(spec);
+                        slider.value = mapping.toNorm(param);
                         valueDisp.innerText = ' (' + round(value) + units + ')';
                     };
                     
                     slider.addEventListener('change', slider.changeModelParameter);
-                    model.params.watch(paramName, slider.changeSliderValue);
+                    param.watch(slider.changeSliderValue);
 
                     [label, slider, valueDisp].forEach(insertBeforeEnd(cont));
                     div.insertAdjacentElement('beforeend', cont);
@@ -1597,9 +1535,32 @@ org.anclab.steller = org.anclab.steller || {};
         return Math.round(p * 100) / 100; // Cents level precision is enough.
     };
 
+    Util.augment = function (submodName, fn) {
+        var steller = org.anclab.steller;
+        if (submodName in steller) {
+            steller[submodName].augmentors.push(fn);
+        } else {
+            // New module.
+            function newMod() {
+                var argv = Array.prototype.slice.call(arguments, 0);
+                var obj = {};
+                newMod.augmentors.forEach(function (f) {
+                    obj = f.apply(obj, argv) || obj;
+                });
+                return obj;
+            }
+
+            newMod.augmentors = [fn];
+            steller[submodName] = newMod;
+        }
+
+        return steller[submodName];
+
+    };
+
     steller.SoundModel    = SoundModel;
     steller.GraphNode     = GraphNode;
-    steller.Parameterize  = Parameterize;
+    steller.Param         = Param;
     steller.Scheduler     = Scheduler;
     steller.Clock         = Clock;
     steller.PeriodicTimer = PeriodicTimer;
