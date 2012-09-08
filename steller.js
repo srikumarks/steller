@@ -1375,6 +1375,10 @@ org.anclab.steller = org.anclab.steller || {};
                 window.webkitRequestAnimationFrame ||
                 window.msRequestAnimationFrame);
 
+        if (!requestAnimationFrame) {
+            throw new Error('PeriodicTimer needs requestAnimationFrame support. Use a sufficiently modern browser.');
+        }
+
         var self = this;
         var running = false;
         var intervalID;
