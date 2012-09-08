@@ -1317,6 +1317,38 @@ org.anclab.steller = org.anclab.steller || {};
             });
         }
 
+        // Simple synchronization facility. You make a sync action and use it
+        // in your composition. Keep a reference around to it and call its
+        // `.play` with a model that has to be started when the sync point is
+        // hit. Multiple models played will all be `spawn`ed.
+        function sync() {
+            var models = [];
+
+            function syncModel(sched, clock, next) {
+                var i, N, temp;
+                if (models.length > 0) {
+                    for (i = 0, N = models.length; i < N; ++i) {
+                        // We need to delay the performance of the
+                        // given models, lest they also end up invoking
+                        // this sync point.
+                        schedule((function (m, clk) {
+                            return function () {
+                                sched.perform(m, clk, stop);
+                            };
+                        }(models[i], clock.copy())));
+                    }
+                    models.splice(0, models.length);
+                } 
+
+                sched.perform(next, clock, stop);
+            }
+
+            syncModel.play = function (model) {
+                models.push(model);
+            };
+
+            return syncModel;
+        }
 
         // ### gate()
         //
@@ -1417,6 +1449,7 @@ org.anclab.steller = org.anclab.steller || {};
         self.anim           = anim;
         self.rate           = rate;
         self.choice         = choice;
+        self.sync           = sync;
         self.gate           = gate;
 
         return self;
