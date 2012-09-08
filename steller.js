@@ -430,18 +430,36 @@ org.anclab.steller = org.anclab.steller || {};
         });
     };
 
+    // Exposes parameters of obj1 through obj2 as well.
+    // `listOfParamNames`, if given, should be an array
+    // of only those parameters that must be exposed.
+    Param.expose = function (obj1, obj2, listOfParamNames) {
+        if (!listOfParamNames) {
+            listOfParamNames = Param.names(obj1);
+        }
+
+        listOfParamNames.forEach(function (n) {
+            if (n in obj2) {
+                console.error('WARNING: Overwriting parameter named [' + n + '] in Param.expose call.');
+            }
+            obj2[n] = obj1[n];
+        });
+
+        return Param;
+    };
+
     // Bind one parameter to another. p2 is expected to 
     // be a parameter. If p1 is a parameter, then bind sets
     // things up so that updating p1 will cause p2 to be updated
     // to the same value. If p1 is just a value, then bind() simply
     // assigns its value to p2 once.
+    //
+    // This is similar in functionality to param.bind(p2), except that
+    // it also works when p1 is not a parameter and is, say, an
+    // audioParam or a normal numeric value.
     Param.bind = function (p1, p2) {
         if (p1 instanceof Param) {
-            p1.watch(function (val) {
-                p2.value = val;
-            });
-
-            p2.value = p1.value;
+            p1.bind(p2);
         } else if ('value' in p1) {
             p2.value = p1.value;
         } else {
