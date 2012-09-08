@@ -1075,7 +1075,8 @@ org.anclab.steller = org.anclab.steller || {};
         function display(callback) {
             return function (sched, clock, next) {
                 var t1 = clock.t1;
-                requestAnimationFrame(function show() { 
+
+                function show() { 
                     var t = time_secs();
                     if (t + kVisualDt > t1) {
                         callback(clock, t1, t); 
@@ -1084,7 +1085,9 @@ org.anclab.steller = org.anclab.steller || {};
                         // more frame.
                         requestAnimationFrame(show);
                     }
-                });
+                }
+                
+                requestAnimationFrame(show);
                 sched.perform(next, clock, stop);
             };
         }
