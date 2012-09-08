@@ -113,6 +113,11 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.choice(models)` makes a model that will randomly behave like one of the
   models in the given array every time it is invoked. This is a simple use of
   `dynamic`.
+- `sh.sync()` makes a synchronizer that can be used to mark various points
+  within a composition where a particular model's playback can be synced.
+- `sh.gate()` makes an action that can be used to pause/resume at certain
+  points within a composition. This is useful for context dependent
+  pause/resume support.
 
 The following operators are available for working with visual actions. Audio
 may be computed a little ahead of time that may span a few visual frames. These
