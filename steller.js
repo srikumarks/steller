@@ -588,9 +588,9 @@ org.anclab.steller = org.anclab.steller || {};
 
             elem.addEventListener('change', onchange);
             param.watch(function (v) {
-                elem.value = mapfn.toNorm(param.value);
+                elem.value = mapfn.toNorm(param);
             });
-            elem.value = mapfn.toNorm(param.value);
+            elem.value = mapfn.toNorm(param);
         } else {
             param.watch(function (v) {
                 elem.value = v;
