@@ -71,7 +71,7 @@ function (sh) {
 
                 var halfLife = model.halfLife.value * 440 / f;
                 var dur = halfLife * 12;
-                gain.gain.exponentialRampToValueAtTime(1/32768, clock.t1 + dur);
+                gain.gain.setTargetValueAtTime(0, clock.t1 + model.attackTime.value, halfLife);
                 osc.noteOn(clock.t1);
                 osc.noteOff(clock.t1 + dur);
             });
