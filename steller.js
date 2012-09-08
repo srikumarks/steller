@@ -696,22 +696,6 @@ org.anclab.steller = org.anclab.steller || {};
             }
         });
 
-        // To pause/resume the scheduler, set the 'paused' member to true/false.
-        // If your track doesn't explicitly support pausing/resuming through the
-        // use of the `comma` action, then your tracks will simply contine to
-        // play and the `paused` property will have no effect. You introduce
-        // `sh.comma` at appropriate points in your tracks where they can be
-        // paused. See `comma` for more info.
-        var pausedState = Param({min: 0, max: 1, value: 0});
-        self.__defineGetter__('paused', function () { 
-            return pausedState.value > 0; 
-        });
-        self.__defineSetter__('paused', function (v) {
-            pausedState.value = v ? 1 : 0;
-            return v;
-        });
-
-
         // Scheduled actions are placed in an event tick queue. The queue is
         // processed on each `scheduleTick()`.  A pair of arrays used as the
         // event tick queue.  Models placed in queue are processed and the
@@ -1067,47 +1051,6 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
-        // ### comma
-        //
-        // Introduce a "comma" wherever you'd like your track to pause
-        // when sched.paused is set to true. When it is set to false
-        // again, your composition will resume from that point. If not
-        // paused, the "comma" remains a no-op, just like 'cont'.
-        //
-        // You introduce `sh.comma` at appropriate points within your
-        // tracks where your composition can nicely pause. The `comma`
-        // will detect the paused state and hold on before continuing.
-        // When the `sh.paused` property is later set to `true`, the
-        // composition will resume simultaneously from all those points 
-        // which were paused. 
-        //
-        // For example, if you have a noteOn-delay-noteOff sequence, you
-        // don't want to pause in the middle of the delay, 'cos the note
-        // will be held continuously. You want to be able to pause only
-        // at the start or end of the note like this -
-        //
-        //      var note = sh.track(sh.comma, noteOn, sh.delay(1), noteOff);
-        //
-        // Now, when the scheduler is in the paused state, `sh.play(note)`
-        // will not start a new note immediately. The note will be scheduled
-        // and once you do `sh.paused = false`, then it the scheduled note
-        // will play.
-        function comma(sched, clock, next) {
-            if (pausedState.value) {
-                pausedState.watch(function resume(v) {
-                    if (v === 0) {
-                        schedule(function () {
-                            pausedState.unwatch(resume);
-                        });
-                        clock.jumpTo(time_secs());
-                        sched.perform(next, clock, stop);
-                    }
-                });
-            } else {
-                sched.perform(next, clock, stop);
-            }
-        }
-
         // ### fire
         //
         // A model that simply fires the given call at the right time, takes
@@ -1374,6 +1317,84 @@ org.anclab.steller = org.anclab.steller || {};
             });
         }
 
+
+        // ### gate()
+        //
+        // Another synchronization option. You make a gate and use it at
+        // various points. You can then close() and open() gate. A newly
+        // created gate doesn't block by default. 
+        //
+        // You can use gate() as a primitive to implement context aware
+        // pause/resume. You make a `gate()` instance `g` first and introduce
+        // it at appropriate points in your composition where you can allow it
+        // to pause/resume. You can then pause your composition by calling
+        // `g.close()` and resume it by calling `g.open()`.
+        //
+        // Other methods of a gate include - 
+        //  
+        //  - g.toggle() 
+        //  - g.isOpen property gives open status of gate.
+        //  - g.cancel() discards all pending resume actions.
+        //      
+        function gate() {
+            var cache = [];
+            var isOpen = true;
+
+            function gateModel(sched, clock, next) {
+                if (isOpen) {
+                    sched.perform(next, clock, stop);
+                } else {
+                    // Cache this and wait.
+                    cache.push({sched: sched, next: next, clock: clock});
+                }
+            }
+
+            function release() {
+                var actions = cache;
+                var i, N, a;
+                cache = [];
+                for (i = 0, N = actions.length; i < N; ++i) {
+                    a = actions[i];
+                    a.sched.perform(a.next, a.clock.jumpTo(time_secs()), stop);
+                }
+            }
+
+            gateModel.__defineGetter__('isOpen', function () { return isOpen; });
+            gateModel.__defineSetter__('isOpen', function (v) {
+                if (v) {
+                    gateModel.open();
+                } else {
+                    gateModel.close();
+                }
+                return v;
+            });
+
+            gateModel.open = function () {
+                isOpen = true;
+                release();
+                return isOpen;
+            };
+
+            gateModel.close = function () {
+                return (isOpen = false);
+            };
+
+            gateModel.toggle = function () {
+                if (isOpen) {
+                    gateModel.close();
+                } else {
+                    gateModel.open();
+                }
+                return isOpen;
+            };
+
+            gateModel.cancel = function () {
+                cache.splice(0, cache.length);
+            };
+
+            return gateModel;
+        }
+
         self.audioContext   = audioContext;
         self.perform        = perform;
         self.cancel         = cancel;
@@ -1388,7 +1409,6 @@ org.anclab.steller = org.anclab.steller || {};
         self.dynamic        = dynamic;
         self.track          = track;
         self.trackR         = trackR;
-        self.comma          = comma;
         self.fire           = fire;
         self.display        = display;
         self.frame          = frame;
@@ -1397,6 +1417,7 @@ org.anclab.steller = org.anclab.steller || {};
         self.anim           = anim;
         self.rate           = rate;
         self.choice         = choice;
+        self.gate           = gate;
 
         return self;
     }
