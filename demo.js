@@ -210,9 +210,7 @@ function noisyFM(filterNode) {
             // one input and one output.
             noiseModulatorNode.connect(filterNode);
             filterNode.connect(carrierNode);
-            if (filterNode.params) {
-                model.params.expose(filterNode);
-            }
+            Param.expose(filterNode, model);
         } else {
             // No filter node.
             noiseModulatorNode.connect(carrierNode);

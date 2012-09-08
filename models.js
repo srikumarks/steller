@@ -45,6 +45,7 @@ function (sh) {
         // halfLife parameter determines the amplitude decay half life (in secs) of
         // a ting at 440Hz.
         model.halfLife = Param({min: 0.001, max: 10, value: 0.5, mapping: 'log'});
+        model.level = Param({min: 0.0, max: 1.0, audioParam: output.gain});
 
         // You can play multiple chimes all mixed into the same output gain node.
         // Note that there is no standard way to "play" or "stop" any sound model.
@@ -111,8 +112,8 @@ function (sh) {
         dc.connect(gain);
 
         var model = SoundModel({}, [], [gain]);
-        model.param({name: 'spread', min: 0.01, max: 10.0, audioParam: source.gain});
-        model.mean = dc.level.alias('mean');
+        model.spread = Param({min: 0.01, max: 10.0, audioParam: source.gain});
+        model.mean = dc.level;
 
         return model;
     };
