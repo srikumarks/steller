@@ -545,6 +545,7 @@ org.anclab.steller = org.anclab.steller || {};
     // is equivalent to p.alias("n") - i.e. the original
     // parameter is the one being aliased all the time.
     Param.prototype.alias = function (name, label) {
+        console.assert(name); // If name is not given, no point in calling alias().
         var self = this;
 
         // Inherit from the original.
@@ -563,6 +564,41 @@ org.anclab.steller = org.anclab.steller || {};
         p.alias = function (name, label) { return self.alias(name, label); };
 
         return p;
+    };
+
+    // Binds a parameter to the given element's value.
+    // Whetever the element changes, the parameter will be updated
+    // and whenever the parameter is assigned, the element will also
+    // be updated.
+    //
+    // The "element" can be a DOM element such as a slider, or 
+    // anything with a '.value' that needs to be updated with the
+    // latest value of this parameter whenever it happens to change.
+    // If it is a DOM element, the parameter is setup to update to
+    // the value of the DOM element as well.
+    Param.prototype.bind = function (elem) {
+        var param = this;
+        if (elem.addEventListener) {
+            var spec = param.spec;
+            var mapfn = spec.mapping ? Param.mappings[spec.mapping] : Param.mappings.linear;
+
+            function onchange(e) {
+                param.value = mapfn.fromNorm(param, parseFloat(elem.value));
+            }
+
+            elem.addEventListener('change', onchange);
+            param.watch(function (v) {
+                elem.value = mapfn.toNorm(param.value);
+            });
+            elem.value = mapfn.toNorm(param.value);
+        } else {
+            param.watch(function (v) {
+                elem.value = v;
+            });
+            elem.value = param.value;
+        }
+
+        return this;
     };
 
     //
