@@ -46,7 +46,7 @@ function (sh) {
         // a ting at 440Hz.
         model.halfLife = Param({min: 0.001, max: 10, value: 0.5, mapping: 'log'});
         model.attackTime = Param({min: 0.0, max: 1.0, value: 0.01});
-        model.level = Param({min: 0.0, max: 1.0, audioParam: output.gain});
+        model.level = Param({min: 0.125, max: 4.0, audioParam: output.gain, mapping: 'log'});
 
         // You can play multiple chimes all mixed into the same output gain node.
         // Note that there is no standard way to "play" or "stop" any sound model.
