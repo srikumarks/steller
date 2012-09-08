@@ -647,6 +647,16 @@ org.anclab.steller = org.anclab.steller || {};
         var self = (this === window ? {} : this);
         var Timer = PeriodicTimer; // or JSNodeTimer
 
+        // We need requestAnimationFrame when scheduling visual animations.
+        var requestAnimationFrame = (window.requestAnimationFrame ||
+                window.mozRequestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.msRequestAnimationFrame);   
+
+        if (!requestAnimationFrame) {
+            throw new Error('Scheduler needs requestAnimationFrame support. Use a sufficiently modern browser version.');
+        }
+
         /* How long is an "instant"? */
         var instant_secs = 0.001;
 
@@ -1053,6 +1063,115 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
+        var kVisualDt = 0.017;
+
+        // ### display
+        //
+        // Very similar to fire(), except that the given callback will be
+        // called for the next visual frame. Consecutive display()s in a
+        // track will result in their callbacks being bunched.
+        //
+        //      callback(clock, scheduledTime, currentTime)
+        function display(callback) {
+            return function (sched, clock, next) {
+                var t1 = clock.t1;
+                requestAnimationFrame(function show() { 
+                    var t = time_secs();
+                    if (t + kVisualDt > t1) {
+                        callback(clock, t1, t); 
+                    } else {
+                        // Not yet time to display it. Delay by one
+                        // more frame.
+                        requestAnimationFrame(show);
+                    }
+                });
+                sched.perform(next, clock, stop);
+            };
+        }
+
+        // ### frame
+        // 
+        // Similar to fire() and display(), but actually lasts one frame
+        // duration.  So consecutive frame() actions in a track can be used for
+        // frame by frame animation. The frame will be delayed at the time at
+        // which it actually needs to be displayed. The scheduler runs
+        // computations a little bit into the future so this may need the frame
+        // to be delayed by a few frames. The clock will always advance by one
+        // frame duration between two consecutive frames.
+        //
+        // Due to the "sync to time" behaviour of frame(), the very first frame
+        // in a sequence may be delayed by more than one frame. Subsequent
+        // frames will occur (typically) with a single frame delay.
+        //
+        // The callback will receive a clock whose `t1` field is exactly the
+        // same as the current time.
+        function frame(callback) {
+            return function (sched, clock, next) {
+                var t1 = clock.t1;
+
+                function show() {
+                    var t = time_secs();
+                    if (t + kVisualDt > t1) {
+                        clock.jumpTo(t);
+                        callback(clock);
+                        sched.perform(next, clock, stop);
+                    } else {
+                        // Delay by one more frame. Keep doing this
+                        // until clock syncs with the real time.
+                        requestAnimationFrame(show);
+                    }
+                }
+
+                requestAnimationFrame(show);
+            };
+        }
+
+        // ### frames(callback, duration)
+        //
+        // Couples a regular delay with a scheduled series of callbacks for
+        // visual animation. The animation calls occur forked relative to the
+        // main schedule and will sync to real time irrespective of the amount
+        // of "compute ahead" used for audio. Therefore the following actions
+        // may begin to run a little before the requested series of callbacks
+        // finish. However, if the following action is also a frames(), then 
+        // that will occur strictly (?) after the current frames() finishes,
+        // due to the "sync to real time" behaviour.
+        //
+        // Responds live to changes in `duration` if it is a parameter.
+        function frames(duration, callback) {
+            var d = delay(duration);
+            return function (sched, clock, next) {
+                var animClock = clock.copy();
+                var t1 = animClock.t1;
+                var t1r = animClock.t1r;
+
+                function show() {
+                    var t = time_secs();
+                    if (t + kVisualDt > t1) {
+                        animClock.jumpTo(t);
+                        var endtr = t1r + duration.valueOf();
+                        if (animClock.t1r < endtr) {
+                            callback(animClock);
+
+                            if (animClock.t1 + kVisualDt < animClock.rel2abs(endtr)) {
+                                // Animation is not finished yet.
+                                requestAnimationFrame(show);
+                            }
+                        }
+
+                        // If you reach here, the animation is finished. 
+                        // Silently end the fork.
+                    } else {
+                        // Not time to start animation yet.
+                        requestAnimationFrame(show);
+                    }
+                }
+
+                requestAnimationFrame(show);
+                sched.perform(d, clock, next);
+            };
+        }
+
         // ### log
         //
         // Useful logging utility.
@@ -1211,6 +1330,9 @@ org.anclab.steller = org.anclab.steller || {};
         self.track          = track;
         self.trackR         = trackR;
         self.fire           = fire;
+        self.display        = display;
+        self.frame          = frame;
+        self.frames         = frames;
         self.log            = log;
         self.anim           = anim;
         self.rate           = rate;
