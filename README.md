@@ -114,3 +114,21 @@ You use the methods of the scheduler object to make specifications or "models" a
   models in the given array every time it is invoked. This is a simple use of
   `dynamic`.
 
+The following operators are available for working with visual actions. Audio
+may be computed a little ahead of time that may span a few visual frames. These
+functions account for that difference and try to schedule the visual actions
+as close to the actual render time as possible. These visual actions can be
+scheduled alongside audio actions in the same composition.
+
+- `sh.display(function (clock, scheduledTime, currentTime) {...})` will call
+  the given callback at the appropriate time for the visual display to occur.
+  The `display()` action itself takes zero duration just like `fire`.
+- `sh.frame(function (clock) {...})` schedules rendering a single visual frame
+  and lasts as long - i.e. the following action will run only after the frame
+  computation completes. Consecutive `frame()` actions result in frame by frame
+  synced animation.
+- `sh.frames(duration, function (clock) {...})` schedules an animation sequence
+  that lasts for the given duration. It accounts for the fact that any
+  following audio computations may need to be done a little before the visual
+  animation finishes.
+
