@@ -1452,6 +1452,16 @@ org.anclab.steller = org.anclab.steller || {};
         self.sync           = sync;
         self.gate           = gate;
 
+        // Start the scheduler by default. I decided to do this because
+        // so far on many occasions I've spent considerable time in 
+        // debugging an unexpected outcome simply because I forgot to
+        // start the scheduler. Shows I have an expectation that once
+        // a "new Scheduler" is created, it is expected to be up and
+        // running. Hence this choice of a default. If you really
+        // need it to be quiet upon start, provide an "options.running = false"
+        // in the second argument.
+        self.running = (options && ('running' in options) && options.running) || true;
+
         return self;
     }
 
