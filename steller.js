@@ -766,7 +766,7 @@ org.anclab.steller = org.anclab.steller || {};
         // so perform *must* be called like a method on the 
         // scheduler.
         function perform(model, clock, next) {
-            model(this, clock, next);
+            model(self, clock, next);
         }
 
         // ### play
@@ -775,7 +775,7 @@ org.anclab.steller = org.anclab.steller || {};
         // The playing starts immediately. See `delay` below if you want
         // the model to start playing some time in the future.
         function play(model) {
-            this.perform(model, clock.copy(), stop);
+            model(self, clock.copy(), stop);
         }
 
         // ### stop
@@ -793,7 +793,7 @@ org.anclab.steller = org.anclab.steller || {};
         // a sequence has no consequence on it.
         function cont(sched, clock, next) {
             if (next) {
-                sched.perform(next, clock, stop);
+                next(sched, clock, stop);
             }
         }
 
@@ -842,15 +842,15 @@ org.anclab.steller = org.anclab.steller || {};
                             callback(clock, clock.t1r, endTime, startTime, endTime);
                         }
                         if (clock.t2r > clock.t1r) {
-                            sched.perform(next, clock.nudgeToRel(endTime), sched.stop);
+                            next(sched, clock.nudgeToRel(endTime), stop);
                         } else {
-                            sched.perform(next, clock, sched.stop);
+                            next(sched, clock, stop);
                         }
                     }
                 }
 
                 function poll(sched) {
-                    sched.perform(tick, clock.tick());
+                    tick(sched, clock.tick(), stop);
                 }
 
                 tick(sched, clock);
@@ -867,7 +867,7 @@ org.anclab.steller = org.anclab.steller || {};
         // more convenient "track".
         function seq(model1, model2) {
             return function (sched, clock, next) {
-                sched.perform(model1, clock, seq(model2, next));
+                model1(sched, clock, seq(model2, next));
             };
         }
 
@@ -879,7 +879,7 @@ org.anclab.steller = org.anclab.steller || {};
         // or something like that.
         function loop(model) {
             return function looper(sched, clock, next) {
-                sched.perform(model, clock, looper);
+                model(sched, clock, looper);
             };
         }
 
@@ -889,14 +889,14 @@ org.anclab.steller = org.anclab.steller || {};
         function loop_while(flag, model) {
             return function (sched, clock, next) {
                 function _break(sched, clock, _) {
-                    sched.perform(next, clock, sh.stop);
+                    next(sched, clock, stop);
                 }
 
-                var stoppableModel = sched.track(sched.dynamic(function () {
-                    return flag.valueOf() ? sched.cont : _break;
+                var stoppableModel = track(dynamic(function () {
+                    return flag.valueOf() ? cont : _break;
                 }), model);
 
-                sched.perform(loop(stoppableModel), clock, next);
+                loop(stoppableModel)(sched, clock, next);
             };
         }
 
@@ -928,13 +928,13 @@ org.anclab.steller = org.anclab.steller || {};
                     syncCount++;
                     if (syncCount === models.length) {
                         /* All models have finished. */
-                        sched.perform(next, clock.jumpTo(clockJ.t1), sched.stop);
+                        next(sched, clock.jumpTo(clockJ.t1), stop);
                     }
                 }
 
                 /* Start off all models. */
                 models.forEach(function (model) {
-                    sched.perform(model, clock.copy(), join);
+                    model(sched, clock.copy(), join);
                 });
             };
         }
@@ -955,9 +955,9 @@ org.anclab.steller = org.anclab.steller || {};
             }
             return function (sched, clock, next) {
                 models.forEach(function (model) {
-                    sched.perform(model, clock.copy(), sched.stop);
+                    model(sched, clock.copy(), stop);
                 });
-                sched.perform(next, clock, sched.stop);
+                next(sched, clock, stop);
             };
         }
 
@@ -971,7 +971,7 @@ org.anclab.steller = org.anclab.steller || {};
         // choices, etc.
         function dynamic(dyn) {
             return function (sched, clock, next) {
-                sched.perform(dyn(clock), clock, next);
+                dyn(clock)(sched, clock, next);
             };
         }
 
@@ -1004,20 +1004,21 @@ org.anclab.steller = org.anclab.steller || {};
 
             return function (sched, clock, next) {
                 var i = 0;
-                sched.perform(function iter(sched, clock, _) {
+                function iter(sched, clock, _) {
                     if (i < models.length) {
-                        sched.perform(models[i++], clock, iter);
+                        models[i++](sched, clock, iter);
                     } else {
-                        sched.perform(next, clock, stop);
+                        next(sched, clock, stop);
                     }
-                }, clock, next);
+                }
+                iter(sched, clock, next);
             };
         }
 
         function trackR_iter(models, i, next) {
             if (i < models.length) {
                 return function (sched, clock, _) {
-                    sched.perform(models[i], clock, trackR_iter(models, i + 1, next));
+                    models[i](sched, clock, trackR_iter(models, i + 1, next));
                 };
             } else {
                 return next;
@@ -1045,9 +1046,8 @@ org.anclab.steller = org.anclab.steller || {};
                 return models[0];
             }
 
-
             return function (sched, clock, next) {
-                sched.perform(trackR_iter(models, 0, next), clock, stop);
+                trackR_iter(models, 0, next)(sched, clock, stop);
             };
         }
 
@@ -1058,7 +1058,7 @@ org.anclab.steller = org.anclab.steller || {};
         function fire(callback) {
             return function (sched, clock, next) {
                 callback(clock);
-                sched.perform(next, clock, stop);
+                next(sched, clock, stop);
             };
         }
 
@@ -1087,7 +1087,7 @@ org.anclab.steller = org.anclab.steller || {};
                 }
                 
                 requestAnimationFrame(show);
-                sched.perform(next, clock, stop);
+                next(sched, clock, stop);
             };
         }
 
@@ -1116,7 +1116,7 @@ org.anclab.steller = org.anclab.steller || {};
                     if (t + kVisualDt > t1) {
                         clock.jumpTo(t);
                         callback(clock);
-                        sched.perform(next, clock, stop);
+                        next(sched, clock, stop);
                     } else {
                         // Delay by one more frame. Keep doing this
                         // until clock syncs with the real time.
@@ -1170,7 +1170,7 @@ org.anclab.steller = org.anclab.steller || {};
                 }
 
                 requestAnimationFrame(show);
-                sched.perform(d, clock, next);
+                d(sched, clock, next);
             };
         }
 
@@ -1305,7 +1305,7 @@ org.anclab.steller = org.anclab.steller || {};
         function rate(r) {
             return function (sched, clock, next) {
                 clock.rate = r;
-                sched.perform(next, clock, sched.stop);
+                next(sched, clock, stop);
             };
         }
 
@@ -1333,14 +1333,14 @@ org.anclab.steller = org.anclab.steller || {};
                         // this sync point.
                         schedule((function (m, clk) {
                             return function () {
-                                sched.perform(m, clk, stop);
+                                m(sched, clk, stop);
                             };
                         }(models[i], clock.copy())));
                     }
                     models.splice(0, models.length);
                 } 
 
-                sched.perform(next, clock, stop);
+                next(sched, clock, stop);
             }
 
             syncModel.play = function (model) {
@@ -1374,7 +1374,7 @@ org.anclab.steller = org.anclab.steller || {};
 
             function gateModel(sched, clock, next) {
                 if (isOpen) {
-                    sched.perform(next, clock, stop);
+                    next(sched, clock, stop);
                 } else {
                     // Cache this and wait.
                     cache.push({sched: sched, next: next, clock: clock});
@@ -1387,7 +1387,7 @@ org.anclab.steller = org.anclab.steller || {};
                 cache = [];
                 for (i = 0, N = actions.length; i < N; ++i) {
                     a = actions[i];
-                    a.sched.perform(a.next, a.clock.jumpTo(time_secs()), stop);
+                    a.next(a.sched, a.clock.jumpTo(time_secs()), stop);
                 }
             }
 
