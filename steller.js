@@ -1062,42 +1062,6 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
-        function trackR_iter(models, i, next) {
-            if (i < models.length) {
-                return function (sched, clock, _) {
-                    models[i](sched, clock, trackR_iter(models, i + 1, next));
-                };
-            } else {
-                return next;
-            }
-        }
-
-        // `trackR` is functionally identical to `track`, but generates 
-        // reusable continuations on the fly. Not usually needed and `track`
-        // is more memory efficient at doing what it does, but 
-        // this could be useful for some interesting effects such as
-        // canonization operators, or when you need to store away
-        // a continuation and revisit it later. The "R" in the name
-        // stands for "reusable continuations".
-        function trackR(models) {
-            if (models && models.constructor === Function) {
-                /* We're given the models as arguments instead of an array. */
-                models = Array.prototype.slice.call(arguments, 0);
-            }
-
-            if (!models || models.constructor !== Array || models.length === 0) {
-                return cont;
-            }
-
-            if (models.length === 1) {
-                return models[0];
-            }
-
-            return function (sched, clock, next) {
-                trackR_iter(models, 0, next)(sched, clock, stop);
-            };
-        }
-
         // ### fire
         //
         // A model that simply fires the given call at the right time, takes
@@ -1487,7 +1451,6 @@ org.anclab.steller = org.anclab.steller || {};
         self.spawn          = spawn;
         self.dynamic        = dynamic;
         self.track          = track;
-        self.trackR         = trackR;
         self.fire           = fire;
         self.display        = display;
         self.frame          = frame;
