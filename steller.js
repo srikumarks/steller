@@ -576,6 +576,10 @@ org.anclab.steller = org.anclab.steller || {};
     // latest value of this parameter whenever it happens to change.
     // If it is a DOM element, the parameter is setup to update to
     // the value of the DOM element as well.
+    //
+    // If you pass a string for `elem`, it is taken to be a DOM
+    // element identifier and will be used via querySelectorAll to
+    // find which elements it refers to and bind to all of them.
     Param.prototype.bind = function (elem) {
         var param = this;
         if (elem.addEventListener) {
@@ -586,16 +590,59 @@ org.anclab.steller = org.anclab.steller || {};
                 param.value = mapfn.fromNorm(param, parseFloat(elem.value));
             }
 
-            elem.addEventListener('change', onchange);
-            param.watch(function (v) {
+            function updateElem(v) {
                 elem.value = mapfn.toNorm(param);
-            });
+            }
+
+            updateElem.elem = elem;
+            updateElem.unbind = function () {
+                elem.removeEventListener(onchange);
+                param.unwatch(updateElem);
+            };
+
+            elem.addEventListener('change', onchange);
+            param.watch(updateElem);
             elem.value = mapfn.toNorm(param);
+        } else if (typeof elem === 'string') {
+            var elems = document.querySelectorAll(elem);
+            var i, N;
+            for (i = 0, N = elems.length; i < N; ++i) {
+                this.bind(elems[i]);
+            }
         } else {
-            param.watch(function (v) {
+            function updateValueElem(v) {
                 elem.value = v;
-            });
+            }
+
+            updateValueElem.elem = elem;
+            updateValueElem.unbind = function () {
+                param.unwatch(updateValueElem);
+            };
+
+            param.watch(updateValueElem);
             elem.value = param.value;
+        }
+
+        return this;
+    };
+
+    // Removes binding to element, where `elem` is the
+    // same kind as for `.bind(elem)` above.
+    Param.prototype.unbind = function (elem) {
+        if (typeof elem === 'string') {
+            var elems = document.querySelectorAll(elem);
+            var i, N;
+            for (i = 0, N = elems.length; i < N; ++i) {
+                this.unbind(elems[i]);
+            }
+        } else {
+            var i, N, watchers = this.watchers;
+            for (i = 0, N = watchers.length; i < N; ++i) {
+                if (watchers[i].elem === elem) {
+                    watchers[i].unbind();
+                    return this;
+                }
+            }
         }
 
         return this;
