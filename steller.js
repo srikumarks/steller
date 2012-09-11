@@ -1041,24 +1041,48 @@ org.anclab.steller = org.anclab.steller || {};
                 models = Array.prototype.slice.call(arguments, 0);
             }
 
-            if (!models || models.constructor !== Array || models.length === 0) {
-                return cont;
-            }
-
-            if (models.length === 1) {
-                return models[0];
-            }
-
-            return function (sched, clock, next) {
-                var i = 0;
+            function track_iter(sched, clock, next, startIndex, endIndex) {
+                // The extra arguments are used by slice() to provide a playback
+                // range for a given track. When the arguments are not given,
+                // the whole track is played. Use track_iter.minIndex and maxIndex
+                // to determine valid values for the index range.
+                var i = (startIndex || 0), i_end = (endIndex || models.length);
+                
                 function iter(sched, clock, _) {
-                    if (i < models.length) {
+                    if (i < i_end) {
                         models[i++](sched, clock, iter);
                     } else {
                         next(sched, clock, stop);
                     }
                 }
+
                 iter(sched, clock, next);
+            }
+
+            // minIndex and maxIndex give the range of possible index values
+            // for the track. The range is [minIndex, maxIndex).
+            track_iter.minIndex = 0;
+            track_iter.maxIndex = models.length;
+            track_iter.models = models;
+
+            return track_iter;
+        }
+
+        // ### slice(aTrack, startIndex, endIndex)
+        //
+        // Makes an action that will play the given slice of the track.
+        // The `aTrack` is created using the `track()` method.
+        // The given indices are constrained by the track's index range
+        // as specified by aTrack.minIndex and aTrack.maxIndex.
+        // 
+        // If you want control of a track or a slice *while* it is playing,
+        // you need to build synchronization mechanisms into it yourself.
+        // See `sync()` and `gate()`.
+        function slice(aTrack, startIndex, endIndex) {
+            endIndex = (arguments.length > 2 ? endIndex : aTrack.maxIndex);
+            startIndex = (arguments.length > 1 ? Math.max(aTrack.minIndex, Math.min(startIndex, endIndex)) : aTrack.minIndex);
+            return function (sched, clock, next) {
+                aTrack(sched, clock, next, startIndex, endIndex);
             };
         }
 
@@ -1451,6 +1475,7 @@ org.anclab.steller = org.anclab.steller || {};
         self.spawn          = spawn;
         self.dynamic        = dynamic;
         self.track          = track;
+        self.slice          = slice;
         self.fire           = fire;
         self.display        = display;
         self.frame          = frame;

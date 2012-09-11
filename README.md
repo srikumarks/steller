@@ -79,6 +79,8 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.cont` is a model that is a no-op when encountered in a track.
 - `sh.track(model1, model2, ...)` makes a sequence for performing the given
   models one after another.
+- `sh.slice(aTrack, startIndex, endIndex)` makes a "slice" of the given track
+  that can be played independently.
 - `sh.delay(dur, [callback])` will cause the models that follow a `delay` in a
   sequence to occur at a later time.  If a `callback` is specified, it will be
   called like `callback(clock, t1r, t2r, startTime, endTime)` for every "tick"
