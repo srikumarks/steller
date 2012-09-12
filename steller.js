@@ -1380,6 +1380,12 @@ org.anclab.steller = org.anclab.steller || {};
 
             syncModel.play = function (model) {
                 models.push(model);
+                return this;
+            };
+
+            syncModel.cancel = function () {
+                models.splice(0, models.length);
+                return this;
             };
 
             return syncModel;
