@@ -152,7 +152,8 @@ function (sh) {
 
         var model = SoundModel({}, [], [level]);
         model.level = Param({min: 0.001, max: 10, audioParam: level.gain, mapping: 'log'});
-        model.attackTime = Param({min: 0.001, max: 10.0, value: 0.01, mapping: 'log'});
+        model.attackTime = Param({min: 0.001, max: 10.0, value: 0.02, mapping: 'log'});
+        model.releaseTime = Param({min: 0.001, max: 10.0, value: 0.1, mapping: 'log'});
 
         var key = 'sound:' + url;
         var soundBuff = sampleCache[key];
@@ -196,7 +197,7 @@ function (sh) {
             }
         };
 
-        function trigger(clock, rate, velocity) {
+        function trigger(clock, rate, velocity, sampleOffset, sampleDuration) {
             console.assert(soundBuff); // Must be loaded already.
 
             var source = AC.createBufferSource();
@@ -205,7 +206,11 @@ function (sh) {
             source.playbackRate.value = rate;
             source.gain.setValueAtTime(0, clock.t1);
             source.gain.setTargetValueAtTime(velocity, clock.t1, model.attackTime.value / 3);
-            source.noteOn(clock.t1);
+            if (arguments.length > 3) {
+                source.noteGrainOn(clock.t1, sampleOffset, (arguments.length > 4 ? sampleDuration : source.duration));
+            } else {
+                source.noteOn(clock.t1);
+            }
             return source;
         }
 
@@ -234,6 +239,41 @@ function (sh) {
                     });
                 })
                 ]);
+
+        // Plays the sample as a "note" of a specific duration.
+        // Assumes that the model is already loaded. `pitch`
+        // and `amplitude` are parameters that the resultant
+        // voice will respond to live. `pitch` is a rate scale
+        // factor. `amplitude` is a linear gain. The duration of
+        // the note will be influenced by the clock rate, but
+        // (unlike `play`) the clock rate will not influence the
+        // playback rate of the sound since there is an explicit
+        // pitch control.
+        model.note = function (pitch, startOffset, duration, activeDur) {
+            if (arguments.length < 4) {
+                activeDur = duration;
+            }
+            return sh.dynamic(function (clock) {
+                var source = trigger(clock, pitch.valueOf(), 1.0, startOffset, duration);
+                source.gain.value = 0;
+                source.gain.value = 0;
+                source.gain.setTargetValueAtTime(1.0, clock.t1, model.attackTime.value / 3);
+                source.playbackRate.setTargetValueAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
+
+                return sh.track([
+                    sh.spawn(sh.track([
+                            sh.delay(activeDur), 
+                            sh.fire(function (clock) {
+                                source.gain.setTargetValueAtTime(0.0, clock.t1, model.releaseTime.value / 3);
+                                source.noteOff(clock.t1 + 12 * model.releaseTime.value);
+                            })
+                            ])),
+                    sh.delay(duration, function (clock) {
+                        source.playbackRate.setTargetValueAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
+                    })
+                    ]);
+            });
+        };
 
         return model;
     };
