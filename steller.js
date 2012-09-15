@@ -1022,7 +1022,7 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
-        // ### track and trackR
+        // ### track
         //
         // Produces a model that consists of a sequence of
         // the given models (given as an array of models).
@@ -1033,8 +1033,7 @@ org.anclab.steller = org.anclab.steller || {};
         // Supports both `track(a, b, c, ..)` and `track([a, b, c, ..])` forms.
         //
         // Note that the intermediate continuations are one-shot
-        // and are not reusable for the sake of performance. If you
-        // need reusable continuations, use trackR instead of track.
+        // and are not reusable for the sake of performance.
         function track(models) {
             if (models && models.constructor === Function) {
                 /* We're given the models as arguments instead of an array. */
@@ -1098,6 +1097,24 @@ org.anclab.steller = org.anclab.steller || {};
         }
 
         var kVisualDt = 0.017;
+        var kFrameInterval = 1/60;
+
+        // I use a simple negative feedback error correction mechanism to help
+        // visual frames land as close to the scheduled time as possible. I
+        // keep a running record of the scheduled versus actual time error and 
+        // compensate for the error in scheduling the visual frames.
+        //
+        // timingError keeps track of the error and timingErrorTC gives the
+        // (1 - exp(- time_constant)) value for display() and frames().
+        // We respond quicker for the display() errors and use more
+        // frames for the frame errors because the display() calls are
+        // expected to be occur less frequently. 
+        //
+        // This approach appears to keep the scheduled versus actual time
+        // error to within about 6ms mostly .. I guess that's roughly
+        // within the jitter of requestAnimationFrame.
+        var timingError = {display: 0.5 * kVisualDt, frame: 0};
+        var timingErrorTC = {display: 0.05, frame: 0.03};
 
         // ### display
         //
@@ -1112,7 +1129,8 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() { 
                     var t = time_secs();
-                    if (t + kVisualDt > t1) {
+                    if (t - timingError.display > t1) {
+                        timingError.display += timingErrorTC.display * (t1 - t - timingError.display);
                         callback(clock, t1, t); 
                     } else {
                         // Not yet time to display it. Delay by one
@@ -1121,7 +1139,7 @@ org.anclab.steller = org.anclab.steller || {};
                     }
                 }
                 
-                requestAnimationFrame(show);
+                show();
                 next(sched, clock, stop);
             };
         }
@@ -1148,7 +1166,8 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() {
                     var t = time_secs();
-                    if (t + kVisualDt > t1) {
+                    if (t - timingError.display  > t1) {
+                        timingError.frame += timingErrorTC.frame * (t1 - t - timingError.frame);
                         clock.jumpTo(t);
                         callback(clock);
                         next(sched, clock, stop);
@@ -1159,11 +1178,11 @@ org.anclab.steller = org.anclab.steller || {};
                     }
                 }
 
-                requestAnimationFrame(show);
+                show();
             };
         }
 
-        // ### frames(callback, duration)
+        // ### frames(duration, callback)
         //
         // Couples a regular delay with a scheduled series of callbacks for
         // visual animation. The animation calls occur forked relative to the
@@ -1181,16 +1200,26 @@ org.anclab.steller = org.anclab.steller || {};
                 var animClock = clock.copy();
                 var t1 = animClock.t1;
                 var t1r = animClock.t1r;
+                animClock.dt = kFrameInterval;
+                animClock.t2 = t1 + kFrameInterval;
+                animClock.t2r = t1r + animClock.rate.valueOf() * kFrameInterval;
 
                 function show() {
                     var t = time_secs();
-                    if (t + kVisualDt > t1) {
-                        animClock.jumpTo(t);
+                    // TODO: Unsure whether the "+ kVisualDt" is the right solution
+                    // across the board. It looks like this might have to depend on
+                    // the specific rendering backend. For WebGL, this might be 
+                    // appropriate since browsers have a one frame delay. For others,
+                    // if software rendering is used, it may not have a one frame delay,
+                    // but if a canvas is accelerated, the delay may be there.
+                    if (t - timingError.frame > t1) {
+                        animClock.tick();
                         var endtr = t1r + duration.valueOf();
                         if (animClock.t1r < endtr) {
-                            callback(animClock);
+                            timingError.frame += timingErrorTC.frame * (animClock.t1 - t - timingError.frame);
+                            callback(animClock, t1r, endtr);
 
-                            if (animClock.t1 + kVisualDt < animClock.rel2abs(endtr)) {
+                            if (animClock.t1r < endtr) {
                                 // Animation is not finished yet.
                                 requestAnimationFrame(show);
                             }
@@ -1204,7 +1233,7 @@ org.anclab.steller = org.anclab.steller || {};
                     }
                 }
 
-                requestAnimationFrame(show);
+                show();
                 d(sched, clock, next);
             };
         }
@@ -1468,6 +1497,13 @@ org.anclab.steller = org.anclab.steller || {};
             return gateModel;
         }
 
+        function stats() {
+            return {
+                display_jitter_ms: Math.round(timingError.display * 10000) / 10,
+                frame_jitter_ms: Math.round(timingError.frame * 10000) / 10
+            };
+        }
+
         self.audioContext   = audioContext;
         self.perform        = perform;
         self.cancel         = cancel;
@@ -1492,6 +1528,7 @@ org.anclab.steller = org.anclab.steller || {};
         self.choice         = choice;
         self.sync           = sync;
         self.gate           = gate;
+        self.stats          = stats;
 
         // Start the scheduler by default. I decided to do this because
         // so far on many occasions I've spent considerable time in 
