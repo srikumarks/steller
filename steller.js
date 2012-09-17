@@ -810,10 +810,7 @@ org.anclab.steller = org.anclab.steller || {};
         //
         // Wraps the concept of "performing" a model so that
         // the representation of the model as a continuation 
-        // is not strewn all over the place. Note that the
-        // "current scheduler" is used by perform via "this",
-        // so perform *must* be called like a method on the 
-        // scheduler.
+        // is not strewn all over the place. 
         function perform(model, clock, next) {
             model(self, clock, next);
         }
