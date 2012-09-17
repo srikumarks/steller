@@ -700,6 +700,8 @@ org.anclab.steller = org.anclab.steller || {};
                 window.webkitRequestAnimationFrame ||
                 window.msRequestAnimationFrame);   
 
+        var AudioContext = (window.AudioContext || window.webkitAudioContext);
+
         if (!requestAnimationFrame) {
             throw new Error('Scheduler needs requestAnimationFrame support. Use a sufficiently modern browser version.');
         }
@@ -714,7 +716,7 @@ org.anclab.steller = org.anclab.steller || {};
                 return function () {
                     return Date.now() * 0.001;
                 };
-            } else if (audioContext.constructor.name === 'AudioContext') {
+            } else if (audioContext instanceof AudioContext) {
                 instant_secs = 1 / audioContext.sampleRate;
                 return function () {
                     return audioContext.currentTime;
