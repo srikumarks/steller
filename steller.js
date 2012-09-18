@@ -1120,12 +1120,12 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() { 
                     var t = time_secs();
-                    if (t > t1) {
+                    if (t + kFrameInterval > t1) {
                         callback(clock, t1, t); 
                     } else {
                         // Not yet time to display it. Delay by one
                         // more frame.
-                        requestAnimationFrame(show);
+                        schedule(show);
                     }
                 }
                 
@@ -1156,14 +1156,14 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() {
                     var t = time_secs();
-                    if (t  > t1) {
+                    if (t + kFrameInterval > t1) {
                         clock.jumpTo(t);
                         callback(clock);
                         next(sched, clock, stop);
                     } else {
                         // Delay by one more frame. Keep doing this
                         // until clock syncs with the real time.
-                        requestAnimationFrame(show);
+                        schedule(show);
                     }
                 }
 
@@ -1201,7 +1201,7 @@ org.anclab.steller = org.anclab.steller || {};
                     // appropriate since browsers have a one frame delay. For others,
                     // if software rendering is used, it may not have a one frame delay,
                     // but if a canvas is accelerated, the delay may be there.
-                    if (t > t1) {
+                    if (t + kFrameInterval > t1) {
                         var endtr = t1r + duration.valueOf();
                         if (animClock.t1r < endtr) {
                             callback(animClock, t1r, endtr);
@@ -1209,7 +1209,7 @@ org.anclab.steller = org.anclab.steller || {};
                             if (animClock.t1r < endtr) {
                                 // Animation is not finished yet.
                                 animClock.tick();
-                                requestAnimationFrame(show);
+                                schedule(show);
                             }
                         }
 
@@ -1217,7 +1217,7 @@ org.anclab.steller = org.anclab.steller || {};
                         // Silently end the fork.
                     } else {
                         // Not time to start animation yet.
-                        requestAnimationFrame(show);
+                        schedule(show);
                     }
                 }
 
