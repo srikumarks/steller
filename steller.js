@@ -770,7 +770,8 @@ org.anclab.steller = org.anclab.steller || {};
         }
 
         /* Keep track of time. */
-        var clockDt = 0.05; // Use a 50Hz time step.
+        var kFrameInterval = 1/60;
+        var clockDt = kFrameInterval;//0.05; // Use a 60Hz time step.
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var clock = new Clock(time_secs(), 0, clockDt, 1.0);
         var now_secs;
@@ -1106,26 +1107,6 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
-        var kVisualDt = 0.017;
-        var kFrameInterval = 1/60;
-
-        // I use a simple negative feedback error correction mechanism to help
-        // visual frames land as close to the scheduled time as possible. I
-        // keep a running record of the scheduled versus actual time error and 
-        // compensate for the error in scheduling the visual frames.
-        //
-        // timingError keeps track of the error and timingErrorTC gives the
-        // (1 - exp(- time_constant)) value for display() and frames().
-        // We respond quicker for the display() errors and use more
-        // frames for the frame errors because the display() calls are
-        // expected to be occur less frequently. 
-        //
-        // This approach appears to keep the scheduled versus actual time
-        // error to within about 6ms mostly .. I guess that's roughly
-        // within the jitter of requestAnimationFrame.
-        var timingError = 0.5 * kVisualDt;
-        var timingErrorTC = 0.03;
-
         // ### display
         //
         // Very similar to fire(), except that the given callback will be
@@ -1139,13 +1120,12 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() { 
                     var t = time_secs();
-                    if (t + kFrameInterval - timingError > t1) {
-                        timingError += timingErrorTC * (t1 - t - kFrameInterval - timingError);
+                    if (t > t1) {
                         callback(clock, t1, t); 
                     } else {
                         // Not yet time to display it. Delay by one
                         // more frame.
-                        requestAnimationFrame(show);
+                        schedule(show);
                     }
                 }
                 
@@ -1176,15 +1156,14 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() {
                     var t = time_secs();
-                    if (t + kFrameInterval - timingError  > t1) {
-                        timingError += timingErrorTC * (t1 - t - kFrameInterval - timingError);
+                    if (t  > t1) {
                         clock.jumpTo(t);
                         callback(clock);
                         next(sched, clock, stop);
                     } else {
                         // Delay by one more frame. Keep doing this
                         // until clock syncs with the real time.
-                        requestAnimationFrame(show);
+                        schedule(show);
                     }
                 }
 
@@ -1216,22 +1195,21 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() {
                     var t = time_secs();
-                    // TODO: Unsure whether the "+ kVisualDt" is the right solution
+                    // TODO: Unsure whether the "+ kFrameInterval" is the right solution
                     // across the board. It looks like this might have to depend on
                     // the specific rendering backend. For WebGL, this might be 
                     // appropriate since browsers have a one frame delay. For others,
                     // if software rendering is used, it may not have a one frame delay,
                     // but if a canvas is accelerated, the delay may be there.
-                    if (t + kFrameInterval - timingError > t1) {
+                    if (t > t1) {
                         var endtr = t1r + duration.valueOf();
                         if (animClock.t1r < endtr) {
-                            timingError += timingErrorTC * (animClock.t1 - t - kFrameInterval - timingError);
                             callback(animClock, t1r, endtr);
 
                             if (animClock.t1r < endtr) {
                                 // Animation is not finished yet.
                                 animClock.tick();
-                                requestAnimationFrame(show);
+                                schedule(show);
                             }
                         }
 
@@ -1239,7 +1217,7 @@ org.anclab.steller = org.anclab.steller || {};
                         // Silently end the fork.
                     } else {
                         // Not time to start animation yet.
-                        requestAnimationFrame(show);
+                        schedule(show);
                     }
                 }
 
@@ -1548,7 +1526,7 @@ org.anclab.steller = org.anclab.steller || {};
 
         function stats() {
             return {
-                frame_jitter_ms: Math.round(timingError * 10000) / 10
+                frame_jitter_ms: 0
             };
         }
 
