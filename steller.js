@@ -1139,8 +1139,8 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() { 
                     var t = time_secs();
-                    if (t - timingError > t1) {
-                        timingError += timingErrorTC * (t1 - t - timingError);
+                    if (t + kFrameInterval - timingError > t1) {
+                        timingError += timingErrorTC * (t1 - t - kFrameInterval - timingError);
                         callback(clock, t1, t); 
                     } else {
                         // Not yet time to display it. Delay by one
@@ -1176,8 +1176,8 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() {
                     var t = time_secs();
-                    if (t - timingError  > t1) {
-                        timingError += timingErrorTC * (t1 - t - timingError);
+                    if (t + kFrameInterval - timingError  > t1) {
+                        timingError += timingErrorTC * (t1 - t - kFrameInterval - timingError);
                         clock.jumpTo(t);
                         callback(clock);
                         next(sched, clock, stop);
@@ -1222,11 +1222,10 @@ org.anclab.steller = org.anclab.steller || {};
                     // appropriate since browsers have a one frame delay. For others,
                     // if software rendering is used, it may not have a one frame delay,
                     // but if a canvas is accelerated, the delay may be there.
-                    if (t - timingError > t1) {
-                        //animClock.tick();
+                    if (t + kFrameInterval - timingError > t1) {
                         var endtr = t1r + duration.valueOf();
                         if (animClock.t1r < endtr) {
-                            timingError += timingErrorTC * (animClock.t1 - t - timingError);
+                            timingError += timingErrorTC * (animClock.t1 - t - kFrameInterval - timingError);
                             callback(animClock, t1r, endtr);
 
                             if (animClock.t1r < endtr) {
