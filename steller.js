@@ -586,12 +586,23 @@ org.anclab.steller = org.anclab.steller || {};
             var spec = param.spec;
             var mapfn = spec.mapping ? Param.mappings[spec.mapping] : Param.mappings.linear;
 
-            function onchange(e) {
-                param.value = mapfn.fromNorm(param, parseFloat(elem.value));
-            }
-
-            function updateElem(v) {
-                elem.value = mapfn.toNorm(param);
+            var onchange, updateElem;
+            if (elem.type === 'checkbox') {
+                onchange = function (e) {
+                    param.value = elem.checked ? 1 : 0;
+                };
+                updateElem = function (v) {
+                    elem.checked = v ? true : false;
+                };
+            } else if (elem.type === 'range') {
+                onchange = function (e) {
+                    param.value = mapfn.fromNorm(param, parseFloat(elem.value));
+                };
+                updateElem = function (v) {
+                    elem.value = mapfn.toNorm(param);
+                };
+            } else {
+                throw new Error('org.anclab.steller.Param.bind: Unsupported control type - ' + elem.type);
             }
 
             updateElem.elem = elem;
@@ -602,7 +613,7 @@ org.anclab.steller = org.anclab.steller || {};
 
             elem.addEventListener('change', onchange);
             param.watch(updateElem);
-            elem.value = mapfn.toNorm(param);
+            updateElem(param.value);
         } else if (typeof elem === 'string') {
             var elems = document.querySelectorAll(elem);
             var i, N;
