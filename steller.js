@@ -1123,8 +1123,8 @@ org.anclab.steller = org.anclab.steller || {};
         // This approach appears to keep the scheduled versus actual time
         // error to within about 6ms mostly .. I guess that's roughly
         // within the jitter of requestAnimationFrame.
-        var timingError = {display: 0.5 * kVisualDt, frame: 0};
-        var timingErrorTC = {display: 0.05, frame: 0.03};
+        var timingError = 0.5 * kVisualDt;
+        var timingErrorTC = 0.03;
 
         // ### display
         //
@@ -1139,8 +1139,8 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() { 
                     var t = time_secs();
-                    if (t - timingError.display > t1) {
-                        timingError.display += timingErrorTC.display * (t1 - t - timingError.display);
+                    if (t - timingError > t1) {
+                        timingError += timingErrorTC * (t1 - t - timingError);
                         callback(clock, t1, t); 
                     } else {
                         // Not yet time to display it. Delay by one
@@ -1176,8 +1176,8 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() {
                     var t = time_secs();
-                    if (t - timingError.display  > t1) {
-                        timingError.frame += timingErrorTC.frame * (t1 - t - timingError.frame);
+                    if (t - timingError  > t1) {
+                        timingError += timingErrorTC * (t1 - t - timingError);
                         clock.jumpTo(t);
                         callback(clock);
                         next(sched, clock, stop);
@@ -1222,15 +1222,16 @@ org.anclab.steller = org.anclab.steller || {};
                     // appropriate since browsers have a one frame delay. For others,
                     // if software rendering is used, it may not have a one frame delay,
                     // but if a canvas is accelerated, the delay may be there.
-                    if (t - timingError.frame > t1) {
-                        animClock.tick();
+                    if (t - timingError > t1) {
+                        //animClock.tick();
                         var endtr = t1r + duration.valueOf();
                         if (animClock.t1r < endtr) {
-                            timingError.frame += timingErrorTC.frame * (animClock.t1 - t - timingError.frame);
+                            timingError += timingErrorTC * (animClock.t1 - t - timingError);
                             callback(animClock, t1r, endtr);
 
                             if (animClock.t1r < endtr) {
                                 // Animation is not finished yet.
+                                animClock.tick();
                                 requestAnimationFrame(show);
                             }
                         }
@@ -1509,8 +1510,7 @@ org.anclab.steller = org.anclab.steller || {};
 
         function stats() {
             return {
-                display_jitter_ms: Math.round(timingError.display * 10000) / 10,
-                frame_jitter_ms: Math.round(timingError.frame * 10000) / 10
+                frame_jitter_ms: Math.round(timingError * 10000) / 10
             };
         }
 
