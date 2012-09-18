@@ -1125,7 +1125,7 @@ org.anclab.steller = org.anclab.steller || {};
                     } else {
                         // Not yet time to display it. Delay by one
                         // more frame.
-                        schedule(show);
+                        requestAnimationFrame(show);
                     }
                 }
                 
@@ -1163,7 +1163,7 @@ org.anclab.steller = org.anclab.steller || {};
                     } else {
                         // Delay by one more frame. Keep doing this
                         // until clock syncs with the real time.
-                        schedule(show);
+                        requestAnimationFrame(show);
                     }
                 }
 
@@ -1209,7 +1209,7 @@ org.anclab.steller = org.anclab.steller || {};
                             if (animClock.t1r < endtr) {
                                 // Animation is not finished yet.
                                 animClock.tick();
-                                schedule(show);
+                                requestAnimationFrame(show);
                             }
                         }
 
@@ -1217,7 +1217,7 @@ org.anclab.steller = org.anclab.steller || {};
                         // Silently end the fork.
                     } else {
                         // Not time to start animation yet.
-                        schedule(show);
+                        requestAnimationFrame(show);
                     }
                 }
 
