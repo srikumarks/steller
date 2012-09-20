@@ -771,7 +771,7 @@ org.anclab.steller = org.anclab.steller || {};
 
         /* Keep track of time. */
         var kFrameInterval = 1/60;
-        var clockDt = kFrameInterval;//0.05; // Use a 60Hz time step.
+        var clockDt = 0.05; // Use a 60Hz time step.
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var clock = new Clock(time_secs(), 0, clockDt, 1.0);
         var now_secs;
@@ -894,6 +894,7 @@ org.anclab.steller = org.anclab.steller || {};
                         if (callback) {
                             callback(clock, clock.t1r, clock.t2r, startTime, endTime);
                         }
+                        clock.tick();
                         schedule(poll);
                     } else {
                         if (callback && endTime >= clock.t1r) {
@@ -908,7 +909,7 @@ org.anclab.steller = org.anclab.steller || {};
                 }
 
                 function poll(sched) {
-                    tick(sched, clock.tick(), stop);
+                    tick(sched, clock, stop);
                 }
 
                 tick(sched, clock);
@@ -1107,6 +1108,8 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
+        var kFrameAdvance = kFrameInterval;
+
         // ### display
         //
         // Very similar to fire(), except that the given callback will be
@@ -1120,12 +1123,12 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() { 
                     var t = time_secs();
-                    if (t + kFrameInterval > t1) {
+                    if (t + kFrameAdvance > t1) {
                         callback(clock, t1, t); 
                     } else {
                         // Not yet time to display it. Delay by one
                         // more frame.
-                        schedule(show);
+                        requestAnimationFrame(show);
                     }
                 }
                 
@@ -1156,14 +1159,14 @@ org.anclab.steller = org.anclab.steller || {};
 
                 function show() {
                     var t = time_secs();
-                    if (t + kFrameInterval > t1) {
+                    if (t + kFrameAdvance > t1) {
                         clock.jumpTo(t);
                         callback(clock);
                         next(sched, clock, stop);
                     } else {
                         // Delay by one more frame. Keep doing this
                         // until clock syncs with the real time.
-                        schedule(show);
+                        requestAnimationFrame(show);
                     }
                 }
 
@@ -1201,15 +1204,18 @@ org.anclab.steller = org.anclab.steller || {};
                     // appropriate since browsers have a one frame delay. For others,
                     // if software rendering is used, it may not have a one frame delay,
                     // but if a canvas is accelerated, the delay may be there.
-                    if (t + kFrameInterval > t1) {
+                    if (t + kFrameAdvance > t1) {
                         var endtr = t1r + duration.valueOf();
                         if (animClock.t1r < endtr) {
                             callback(animClock, t1r, endtr);
 
-                            if (animClock.t1r < endtr) {
-                                // Animation is not finished yet.
+                            // Animation is not finished yet.
+                            while (animClock.t1 < t) {
                                 animClock.tick();
-                                schedule(show);
+                            }
+
+                            if (animClock.t1r < endtr) {
+                                requestAnimationFrame(show);
                             }
                         }
 
@@ -1217,7 +1223,7 @@ org.anclab.steller = org.anclab.steller || {};
                         // Silently end the fork.
                     } else {
                         // Not time to start animation yet.
-                        schedule(show);
+                        requestAnimationFrame(show);
                     }
                 }
 

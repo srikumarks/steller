@@ -64,14 +64,16 @@ function (sh) {
                 osc.frequency.value = f;
 
                 var gain = AC.createGainNode();
-                osc.connect(gain);
-                gain.connect(output);
+                gain.gain.value = 0;
                 gain.gain.setValueAtTime(0, clock.t1);
                 gain.gain.linearRampToValueAtTime(velocity.valueOf() / 8, clock.t1 + model.attackTime.value);
 
                 var halfLife = model.halfLife.value * 440 / f;
-                var dur = halfLife * 12;
+                var dur = halfLife * 10;
                 gain.gain.setTargetValueAtTime(0, clock.t1 + model.attackTime.value, halfLife);
+
+                osc.connect(gain);
+                gain.connect(output);
                 osc.noteOn(clock.t1);
                 osc.noteOff(clock.t1 + dur);
             });
