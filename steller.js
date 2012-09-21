@@ -788,7 +788,7 @@ org.anclab.steller = org.anclab.steller || {};
         var clockDt = 0.05; // Use a 60Hz time step.
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var clock = new Clock(time_secs(), 0, clockDt, 1.0);
-        var now_secs;
+        var now_secs = clock.t1;
 
         /* Main scheduling work happens here.  */
         function scheduleTick() {
