@@ -724,11 +724,25 @@ org.anclab.steller = org.anclab.steller || {};
          * The scheduler supports both mechanisms for tracking time. */
         var time_secs = (function () {
             if (!audioContext) {
-                return function () {
-                    return Date.now() * 0.001;
-                };
+                var perf = window.performance;
+                var perfNow = (perf && (perf.now || perf.webkitNow || perf.mozNow));
+                if (perfNow) {
+                    // High resolution performance time available.
+                    return function () {
+                        return perfNow.call(perf) * 0.001;
+                    };
+                } else {
+                    return function () {
+                        return Date.now() * 0.001;
+                    };
+                }
             } else if (audioContext instanceof AudioContext) {
                 instant_secs = 1 / audioContext.sampleRate;
+                audioContext.createGainNode();  // Looks useless, but it gets the
+                                                // audioContext.currentTime running.
+                                                // Otherwise currentTime continues to
+                                                // be at 0 till some API call gets made,
+                                                // it looks like.
                 return function () {
                     return audioContext.currentTime;
                 };
@@ -881,14 +895,24 @@ org.anclab.steller = org.anclab.steller || {};
         function delay(dt, callback) {
             return function (sched, clock, next) {
                 var startTime = clock.t1r;
+                var last_now_secs = now_secs;
 
                 function tick(sched, clock) {
                     var endTime = startTime + dt.valueOf();
 
                     // If lagging behind, advance time before processing models.
-                    while (now_secs > clock.t1) {
-                        clock.advance(now_secs - clock.t1);
+                    // If, say, the user switched tabs and got back while
+                    // the scheduler is locked to a delay, then all the pending
+                    // delays need to be advanced by exactly the same amount.
+                    // The way to determine this amount is to keep track of
+                    // the time interval between the previous call and the
+                    // current one. That value is guaranteed to be the same
+                    // for all delays active within a single scheduleTick().
+                    if (now_secs > clock.t1) {
+                        clock.advance(now_secs - last_now_secs);
                     }
+
+                    last_now_secs = now_secs;
 
                     if (clock.t2r < endTime) {
                         if (callback) {
