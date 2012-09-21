@@ -789,6 +789,7 @@ org.anclab.steller = org.anclab.steller || {};
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var clock = new Clock(time_secs(), 0, clockDt, 1.0);
         var now_secs = clock.t1;
+        var last_now_secs = now_secs;
 
         /* Main scheduling work happens here.  */
         function scheduleTick() {
@@ -815,6 +816,7 @@ org.anclab.steller = org.anclab.steller || {};
                 tmpQ.splice(0, tmpQ.length);
                 requeue = tmpQ;
                 clock.tick();
+                last_now_secs = now_secs;
             }
         }
 
@@ -895,7 +897,6 @@ org.anclab.steller = org.anclab.steller || {};
         function delay(dt, callback) {
             return function (sched, clock, next) {
                 var startTime = clock.t1r;
-                var last_now_secs = now_secs;
 
                 function tick(sched, clock) {
                     var endTime = startTime + dt.valueOf();
@@ -908,11 +909,20 @@ org.anclab.steller = org.anclab.steller || {};
                     // the time interval between the previous call and the
                     // current one. That value is guaranteed to be the same
                     // for all delays active within a single scheduleTick().
+                    //
+                    // Furthermore, the delay needs to be cryo-frozen frozen
+                    // during the lapse and then thawed when the playback
+                    // resumes. This also entails adjustment of the startTime
+                    // and endTime so everything stays in sync. This results in
+                    // an adjustment of the "past" of the delay to be consistent
+                    // with the present and the future.
                     if (now_secs > clock.t1) {
+                        var dtr = clock.t1r;
                         clock.advance(now_secs - last_now_secs);
+                        dtr = clock.t1r - dtr;
+                        startTime += dtr;
+                        endTime += dtr;
                     }
-
-                    last_now_secs = now_secs;
 
                     if (clock.t2r < endTime) {
                         if (callback) {
