@@ -659,6 +659,75 @@ org.anclab.steller = org.anclab.steller || {};
         return this;
     };
 
+    // A simple Queue class with the intention to minimize
+    // memory allocation just for the sake of queue processing.
+    function Queue(name) {
+        var length = 0,
+            maxLength = 4,
+            store = [null,null,null,null],
+            removeAt = -1,
+            addAt = 0;
+
+
+        // Add an element to the queue.
+        function add(x) {
+            if (length >= maxLength) {
+                // Grow store
+                var newStore = new Array(maxLength * 2);
+                var i, j, N, M;
+                for (i = removeAt, j = 0, N = length, M = maxLength; j < N; ++j, i = (i + 1) % M) {
+                    newStore[j] = store[i];
+                }
+                store = newStore;
+                addAt = length;
+                removeAt = length === 0 ? -1 : 0;
+                maxLength *= 2;
+            }
+
+            // Add element.
+            store[addAt] = x;
+            if (removeAt < 0) {
+                removeAt = addAt;
+            }
+            addAt = (addAt + 1) % maxLength;
+
+            return this.length = length = (length + 1);
+        }
+
+        // Remove an element from the queue.
+        // Throws an exception when the queue is empty.
+        function remove() {
+            if (length <= 0) {
+                throw new Error('Empty queue');
+            }
+
+            var x = store[removeAt];
+            store[removeAt] = null; // Needed for garbage collector friendliness.
+            removeAt = (removeAt + 1) % maxLength;
+            this.length = length = (length - 1);
+
+            return x;
+        }
+
+        // Remove all elements.
+        function clear() {
+            this.length = length = 0;
+            store.splice(0, store.length, null, null, null, null);
+            maxLength = 4;
+            removeAt = -1;
+            addAt = 0;
+        }
+
+        // Length is kept up to date.
+        this.length = 0;
+
+        this.add = add;
+        this.remove = remove;
+        this.clear = clear;
+
+        return this;
+    }
+
     //
     // ## Scheduler
     //
@@ -776,17 +845,17 @@ org.anclab.steller = org.anclab.steller || {};
         // event tick queue.  Models placed in queue are processed and the
         // resultant models scheduled go into the requeue. Then after one such
         // cycle, the variables are swapped.
-        var queue = []; var requeue = [];
+        var queue = new Queue('tick');
 
         // The frame queue is for running visual frame calculations after
         // the normal scheduling loop has finished. This runs *every*
         // scheduleTick.
-        var fqueue = [], frequeue = [];
+        var fqueue = new Queue('frames');
 
         // Cancels all currently running actions.
         function cancel() {
-            queue.splice(0, queue.length);
-            requeue.splice(0, requeue.length);
+            queue.clear();
+            fqueue.clear();
         }
 
         /* Keep track of time. */
@@ -799,7 +868,7 @@ org.anclab.steller = org.anclab.steller || {};
 
         /* Main scheduling work happens here.  */
         function scheduleTick() {
-            var i, N, t, tmpQ;
+            var i, N, t, length, f, a;
             t = time_secs();
             now_secs = t + clockDt;
 
@@ -809,33 +878,30 @@ org.anclab.steller = org.anclab.steller || {};
             }
 
             while (clock.t1 < now_secs) {
-                tmpQ = queue;
-                queue = requeue;
+                // Process no more than the existing number of elements
+                // in the queue. Do not process any newly added elements
+                length = queue.length;
 
                 /* Process the scheduled tickers. The tickers
                  * will know to schedule themselves and for that
                  * we pass them the scheduler itself.
                  */
-                for (i = 0, N = tmpQ.length; i < N; ++i) {
-                    tmpQ[i](self, clock, cont);
+                for (i = 0; i < length; ++i) {
+                    queue.remove()(self, clock, cont);
                 }
 
-                tmpQ.splice(0, tmpQ.length);
-                requeue = tmpQ;
                 clock.tick();
                 last_now_secs = now_secs;
             }
 
             if (fqueue.length > 0) {
-                tmpQ = fqueue;
-                fqueue = frequeue;
+                length = fqueue.length;
 
-                for (i = 0, N = tmpQ.length; i < N; i += 2) {
-                    tmpQ[i](t, tmpQ[i+1]);
+                for (i = 0; i < length; i += 2) {
+                    f = fqueue.remove();
+                    a = fqueue.remove();
+                    f(t, a);
                 }
-
-                tmpQ.splice(0, tmpQ.length);
-                frequeue = tmpQ;
             }
         }
 
@@ -849,7 +915,7 @@ org.anclab.steller = org.anclab.steller || {};
         // Schedules the model by placing it into the processing queue.
         function schedule(model) {
             if (model) {
-                queue.push(model);
+                queue.add(model);
             }
         }
 
@@ -859,8 +925,8 @@ org.anclab.steller = org.anclab.steller || {};
         // f is expected to be a function and will be called with no arguments.
         function scheduleFrame(f, info) {
             if (f) {
-                fqueue.push(f);
-                fqueue.push(info);
+                fqueue.add(f);
+                fqueue.add(info);
             }
         }
 
@@ -1282,13 +1348,17 @@ org.anclab.steller = org.anclab.steller || {};
                     animTick = function (t, info) {
                         if (info.intervals.length > 0) {
                             var t1 = info.intervals[0], t1r = info.intervals[1], t2r = info.intervals[2];
-                            if (t1r < info.endTime && t1 < time_secs()) {
-                                callback(info.clock, t1r, t2r, info.startTime, info.endTime);
-                                info.intervals.shift();
-                                info.intervals.shift();
-                                info.intervals.shift();
+                            if (t1r < info.endTime) {
+                                if (t1 < time_secs()) { 
+                                    callback(info.clock, t1r, t2r, info.startTime, info.endTime);
+                                    info.intervals.shift();
+                                    info.intervals.shift();
+                                    info.intervals.shift();
+                                }
+                                scheduleFrame(animTick, info);
+                            } else {
+                                // Animation ended.
                             }
-                            scheduleFrame(animTick, info);
                         }
                     };
 
