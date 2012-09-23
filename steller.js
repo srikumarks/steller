@@ -743,6 +743,7 @@ org.anclab.steller = org.anclab.steller || {};
                                                 // Otherwise currentTime continues to
                                                 // be at 0 till some API call gets made,
                                                 // it looks like.
+
                 return function () {
                     return audioContext.currentTime;
                 };
@@ -777,6 +778,11 @@ org.anclab.steller = org.anclab.steller || {};
         // cycle, the variables are swapped.
         var queue = []; var requeue = [];
 
+        // The frame queue is for running visual frame calculations after
+        // the normal scheduling loop has finished. This runs *every*
+        // scheduleTick.
+        var fqueue = [], frequeue = [];
+
         // Cancels all currently running actions.
         function cancel() {
             queue.splice(0, queue.length);
@@ -793,8 +799,9 @@ org.anclab.steller = org.anclab.steller || {};
 
         /* Main scheduling work happens here.  */
         function scheduleTick() {
-            var i, N, tmpQ;
-            now_secs = time_secs() + clockDt;
+            var i, N, t, tmpQ;
+            t = time_secs();
+            now_secs = t + clockDt;
 
             /* If lagging behind, advance time before processing models. */
             while (now_secs - clock.t1 > clockBigDt) {
@@ -818,6 +825,18 @@ org.anclab.steller = org.anclab.steller || {};
                 clock.tick();
                 last_now_secs = now_secs;
             }
+
+            if (fqueue.length > 0) {
+                tmpQ = fqueue;
+                fqueue = frequeue;
+
+                for (i = 0, N = tmpQ.length; i < N; i += 2) {
+                    tmpQ[i](t, tmpQ[i+1]);
+                }
+
+                tmpQ.splice(0, tmpQ.length);
+                frequeue = tmpQ;
+            }
         }
 
         // `scheduleTick` needs to be called with good solid regularity.
@@ -831,6 +850,17 @@ org.anclab.steller = org.anclab.steller || {};
         function schedule(model) {
             if (model) {
                 queue.push(model);
+            }
+        }
+
+        // Schedules a "frame computation" which will run every scheduleTick
+        // regardless of how much ahead the rest of the scheduler is running.
+        //
+        // f is expected to be a function and will be called with no arguments.
+        function scheduleFrame(f, info) {
+            if (f) {
+                fqueue.push(f);
+                fqueue.push(info);
             }
         }
 
@@ -848,9 +878,32 @@ org.anclab.steller = org.anclab.steller || {};
         // Having constructed a model, you use play() to play it.
         // The playing starts immediately. See `delay` below if you want
         // the model to start playing some time in the future.
-        function play(model) {
+        function playNow(model) {
             model(self, clock.copy(), stop);
         }
+
+        var play = (function () {
+            if (audioContext) {
+                /* waitForAudioClockStartAndPlay will play the given model only
+                 * after the audio clock has advanced beyond zero.  This can
+                 * take some time on iOS6. This is necessary for Web Audio API
+                 * on iOS6. Sadly, as of this writing, (22 Sep 2012), this
+                 * technique is sufficient only for iOS6 on iPhone4. Safari on
+                 * iPad doesn't work even with this wait in place. 
+                 */
+                return function waitForAudioClockStartAndPlay(model) {
+                    if (audioContext.currentTime === 0) {
+                        setTimeout(waitForAudioClockStartAndPlay, 100, model);
+                    } else {
+                        clock.jumpTo(time_secs());
+                        self.play = play = playNow;
+                        playNow(model);
+                    }
+                };
+            } else {
+                return playNow;
+            }
+        }());
 
         // ### stop
         //
@@ -1155,18 +1208,17 @@ org.anclab.steller = org.anclab.steller || {};
             return function (sched, clock, next) {
                 var t1 = clock.t1;
 
-                function show() { 
-                    var t = time_secs();
+                function show(t) { 
                     if (t + kFrameAdvance > t1) {
                         callback(clock, t1, t); 
                     } else {
                         // Not yet time to display it. Delay by one
                         // more frame.
-                        requestAnimationFrame(show);
+                        scheduleFrame(show);
                     }
                 }
                 
-                show();
+                scheduleFrame(show);
                 next(sched, clock, stop);
             };
         }
@@ -1191,8 +1243,7 @@ org.anclab.steller = org.anclab.steller || {};
             return function (sched, clock, next) {
                 var t1 = clock.t1;
 
-                function show() {
-                    var t = time_secs();
+                function show(t) {
                     if (t + kFrameAdvance > t1) {
                         clock.jumpTo(t);
                         callback(clock);
@@ -1200,11 +1251,11 @@ org.anclab.steller = org.anclab.steller || {};
                     } else {
                         // Delay by one more frame. Keep doing this
                         // until clock syncs with the real time.
-                        requestAnimationFrame(show);
+                        scheduleFrame(show);
                     }
                 }
 
-                show();
+                scheduleFrame(show);
             };
         }
 
@@ -1220,49 +1271,99 @@ org.anclab.steller = org.anclab.steller || {};
         // due to the "sync to real time" behaviour.
         //
         // Responds live to changes in `duration` if it is a parameter.
-        function frames(duration, callback) {
-            var d = delay(duration);
+        function frames(dt, callback) {
             return function (sched, clock, next) {
-                var animClock = clock.copy();
-                var t1 = animClock.t1;
-                var t1r = animClock.t1r;
-                animClock.dt = kFrameInterval;
-                animClock.t2 = t1 + kFrameInterval;
-                animClock.t2r = t1r + animClock.rate.valueOf() * kFrameInterval;
+                var startTime = clock.t1r;
+                var animTime = startTime;
+                var animTimeAbs = clock.t1;
+                var animTick, animInfo;
 
-                function show() {
-                    var t = time_secs();
-                    // TODO: Unsure whether the "+ kFrameInterval" is the right solution
-                    // across the board. It looks like this might have to depend on
-                    // the specific rendering backend. For WebGL, this might be 
-                    // appropriate since browsers have a one frame delay. For others,
-                    // if software rendering is used, it may not have a one frame delay,
-                    // but if a canvas is accelerated, the delay may be there.
-                    if (t + kFrameAdvance > t1) {
-                        var endtr = t1r + duration.valueOf();
-                        if (animClock.t1r < endtr) {
-                            callback(animClock, t1r, endtr);
-
-                            // Animation is not finished yet.
-                            while (animClock.t1 < t) {
-                                animClock.tick();
+                if (callback) {
+                    animTick = function (t, info) {
+                        if (info.intervals.length > 0) {
+                            var t1 = info.intervals[0], t1r = info.intervals[1], t2r = info.intervals[2];
+                            if (t1r < info.endTime && t1 < time_secs()) {
+                                callback(info.clock, t1r, t2r, info.startTime, info.endTime);
+                                info.intervals.shift();
+                                info.intervals.shift();
+                                info.intervals.shift();
                             }
+                            scheduleFrame(animTick, info);
+                        }
+                    };
 
-                            if (animClock.t1r < endtr) {
-                                requestAnimationFrame(show);
+                    animInfo = {clock: clock, intervals: [], startTime: clock.t1r, endTime: clock.t1r + dt.valueOf()};
+                    scheduleFrame(animTick, animInfo);
+                }
+
+                function tick(sched, clock) {
+                    var i, N, dtr, step;
+                    var endTime = startTime + dt.valueOf();
+
+                    // If lagging behind, advance time before processing models.
+                    // If, say, the user switched tabs and got back while
+                    // the scheduler is locked to a delay, then all the pending
+                    // delays need to be advanced by exactly the same amount.
+                    // The way to determine this amount is to keep track of
+                    // the time interval between the previous call and the
+                    // current one. That value is guaranteed to be the same
+                    // for all delays active within a single scheduleTick().
+                    //
+                    // Furthermore, the delay needs to be cryo-frozen frozen
+                    // during the lapse and then thawed when the playback
+                    // resumes. This also entails adjustment of the startTime
+                    // and endTime so everything stays in sync. This results in
+                    // an adjustment of the "past" of the delay to be consistent
+                    // with the present and the future.
+                    if (now_secs > clock.t1) {
+                        step = now_secs - last_now_secs;
+                        dtr = clock.t1r;
+                        clock.advance(step);
+                        dtr = clock.t1r - dtr;
+                        startTime += dtr;
+                        endTime += dtr;
+
+                        if (animInfo) {
+                            animTime += dtr;
+                            animTimeAbs += step;
+                            animInfo.startTime = startTime;
+                            animInfo.endTime = endTime;
+                            for (i = 0, N = animInfo.intervals.length; i < N; i += 3) {
+                                animInfo.intervals[i] += step;
+                                animInfo.intervals[i+1] += dtr;
+                                animInfo.intervals[i+2] += dtr;
                             }
                         }
+                    }
 
-                        // If you reach here, the animation is finished. 
-                        // Silently end the fork.
+                    if (animInfo && clock.t1r <= endTime) {
+                        animInfo.endTime = endTime;
+                        dtr = Math.max(0.001, kFrameInterval * clock.rate.valueOf());
+                        while (animTime < clock.t2r) {
+                            animInfo.intervals.push(animTimeAbs);
+                            animInfo.intervals.push(animTime);
+                            animInfo.intervals.push(animTime + dtr);
+                            animTime += dtr;
+                        }
+                    }
+
+                    if (clock.t2r < endTime) {
+                        clock.tick();
+                        schedule(poll);
                     } else {
-                        // Not time to start animation yet.
-                        requestAnimationFrame(show);
+                        if (clock.t2r > clock.t1r) {
+                            next(sched, clock.nudgeToRel(endTime), stop);
+                        } else {
+                            next(sched, clock, stop);
+                        }
                     }
                 }
 
-                show();
-                d(sched, clock, next);
+                function poll(sched) {
+                    tick(sched, clock, stop);
+                }
+
+                tick(sched, clock);
             };
         }
 
