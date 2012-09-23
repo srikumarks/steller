@@ -1347,13 +1347,11 @@ org.anclab.steller = org.anclab.steller || {};
                 if (callback) {
                     animTick = function (t, info) {
                         if (info.intervals.length > 0) {
-                            var t1 = info.intervals[0], t1r = info.intervals[1], t2r = info.intervals[2];
-                            if (t1r < info.endTime) {
-                                if (t1 < time_secs()) { 
-                                    callback(info.clock, t1r, t2r, info.startTime, info.endTime);
-                                    info.intervals.shift();
-                                    info.intervals.shift();
-                                    info.intervals.shift();
+                            var t1 = info.intervals[0], t1r = info.intervals[1], t2r = info.intervals[2], r = info.intervals[3];
+                            if (t1r <= info.endTime) {
+                                if (t1 < kFrameAdvance + t) { 
+                                    callback(info.clock, t1r, t2r, info.startTime, info.endTime, r);
+                                    info.intervals.splice(0, 4);
                                 }
                                 scheduleFrame(animTick, info);
                             } else {
@@ -1398,21 +1396,30 @@ org.anclab.steller = org.anclab.steller || {};
                             animTimeAbs += step;
                             animInfo.startTime = startTime;
                             animInfo.endTime = endTime;
-                            for (i = 0, N = animInfo.intervals.length; i < N; i += 3) {
-                                animInfo.intervals[i] += step;
-                                animInfo.intervals[i+1] += dtr;
-                                animInfo.intervals[i+2] += dtr;
+
+                            if (animInfo.intervals.length > 4) {
+                                // Leave only one frame in the queue intact.
+                                animInfo.intervals.splice(0, animInfo.intervals.length - 4);
+                            }
+
+                            if (animInfo.intervals.length > 0) {
+                                animInfo.intervals[0] += step;
+                                animInfo.intervals[1] += dtr;
+                                animInfo.intervals[2] += dtr;
+                                animInfo.intervals[3] = clock.rate.valueOf();
                             }
                         }
                     }
 
                     if (animInfo && clock.t1r <= endTime) {
                         animInfo.endTime = endTime;
-                        dtr = Math.max(0.001, kFrameInterval * clock.rate.valueOf());
+                        var frozenRate = clock.rate.valueOf();
+                        dtr = Math.max(0.001, kFrameInterval * frozenRate);
                         while (animTime < clock.t2r) {
                             animInfo.intervals.push(animTimeAbs);
                             animInfo.intervals.push(animTime);
                             animInfo.intervals.push(animTime + dtr);
+                            animInfo.intervals.push(frozenRate);
                             animTime += dtr;
                         }
                     }
@@ -1667,11 +1674,11 @@ org.anclab.steller = org.anclab.steller || {};
 
             function release(clock) {
                 var actions = cache;
-                var i, N, a;
+                var i, N, a, t = time_secs();
                 cache = [];
                 for (i = 0, N = actions.length; i < N; ++i) {
                     a = actions[i];
-                    a.next(a.sched, clock ? clock.copy() : a.clock.jumpTo(time_secs()), stop);
+                    a.next(a.sched, clock ? clock.copy() : a.clock.jumpTo(t), stop);
                 }
             }
 
