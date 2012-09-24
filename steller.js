@@ -457,13 +457,25 @@ org.anclab.steller = org.anclab.steller || {};
     // This is similar in functionality to param.bind(p2), except that
     // it also works when p1 is not a parameter and is, say, an
     // audioParam or a normal numeric value.
-    Param.bind = function (p1, p2) {
+    Param.bind = function (p1, p2, sh) {
         if (p1 instanceof Param) {
-            p1.bind(p2);
+            p1.bind(p2, sh);
         } else if ('value' in p1) {
-            p2.value = p1.value;
+            if (sh) {
+                sh.update(function () {
+                    p2.value = p1.value;
+                });
+            } else {
+                p2.value = p1.value;
+            }
         } else {
-            p2.value = p1;
+            if (sh) {
+                sh.update(function () {
+                    p2.value = p1;
+                });
+            } else {
+                p2.value = p1;
+            }
         }
 
         return Param;
@@ -580,24 +592,31 @@ org.anclab.steller = org.anclab.steller || {};
     // If you pass a string for `elem`, it is taken to be a DOM
     // element identifier and will be used via querySelectorAll to
     // find which elements it refers to and bind to all of them.
-    Param.prototype.bind = function (elem) {
+    Param.prototype.bind = function (elem, sh) {
         var param = this;
         if (elem.addEventListener) {
             var spec = param.spec;
             var mapfn = spec.mapping ? Param.mappings[spec.mapping] : Param.mappings.linear;
+            var updater;
 
             var onchange, updateElem;
             if (elem.type === 'checkbox') {
-                onchange = function (e) {
+                updater = function () {
                     param.value = elem.checked ? 1 : 0;
                 };
+
+                onchange = sh ? (function () { sh.update(updater); }) : updater;
+
                 updateElem = function (v) {
                     elem.checked = v ? true : false;
                 };
             } else if (elem.type === 'range') {
-                onchange = function (e) {
+                updater = function () {
                     param.value = mapfn.fromNorm(param, parseFloat(elem.value));
                 };
+
+                onchange = sh ? (function () { sh.update(updater); }) : updater;
+
                 updateElem = function (v) {
                     elem.value = mapfn.toNorm(param);
                 };
@@ -852,8 +871,12 @@ org.anclab.steller = org.anclab.steller || {};
         // scheduleTick.
         var fqueue = new Queue('frames');
 
+        // Update queue. This can be used to synchronize parameter changes.
+        var uqueue = new Queue('update');
+
         // Cancels all currently running actions.
         function cancel() {
+            uqueue.clear();
             queue.clear();
             fqueue.clear();
         }
@@ -878,6 +901,13 @@ org.anclab.steller = org.anclab.steller || {};
             }
 
             while (clock.t1 < now_secs) {
+                if (uqueue.length > 0) {
+                    length = uqueue.length;
+                    for (i = 0; i < length; ++i) {
+                        uqueue.remove()();
+                    }
+                }
+
                 // Process no more than the existing number of elements
                 // in the queue. Do not process any newly added elements
                 length = queue.length;
@@ -927,6 +957,13 @@ org.anclab.steller = org.anclab.steller || {};
             if (f) {
                 fqueue.add(f);
                 fqueue.add(info);
+            }
+        }
+
+        // Makes sure f is called before the next schedule.
+        function scheduleUpdate(f) {
+            if (f) {
+                uqueue.add(f);
             }
         }
 
@@ -1749,6 +1786,7 @@ org.anclab.steller = org.anclab.steller || {};
         }
 
         self.audioContext   = audioContext;
+        self.update         = scheduleUpdate;
         self.perform        = perform;
         self.cancel         = cancel;
         self.play           = play;
