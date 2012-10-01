@@ -794,14 +794,11 @@ org.anclab.steller = org.anclab.steller || {};
         var Timer = PeriodicTimer; // or JSNodeTimer
 
         // We need requestAnimationFrame when scheduling visual animations.
-        var requestAnimationFrame = (window.requestAnimationFrame ||
-                window.mozRequestAnimationFrame ||
-                window.webkitRequestAnimationFrame ||
-                window.msRequestAnimationFrame);   
+        var requestAnimationFrame = getRequestAnimationFrameFunc();
 
-        var AudioContext = (window.AudioContext || window.webkitAudioContext);
+        var AudioContext = getAudioContext();
 
-        if (!requestAnimationFrame) {
+        if (detectBrowserEnv() && !requestAnimationFrame) {
             throw new Error('Scheduler needs requestAnimationFrame support. Use a sufficiently modern browser version.');
         }
 
@@ -812,18 +809,7 @@ org.anclab.steller = org.anclab.steller || {};
          * The scheduler supports both mechanisms for tracking time. */
         var time_secs = (function () {
             if (!audioContext) {
-                var perf = window.performance;
-                var perfNow = (perf && (perf.now || perf.webkitNow || perf.mozNow));
-                if (perfNow) {
-                    // High resolution performance time available.
-                    return function () {
-                        return perfNow.call(perf) * 0.001;
-                    };
-                } else {
-                    return function () {
-                        return Date.now() * 0.001;
-                    };
-                }
+                return getHighResPerfTimeFunc() || (function () { return Date.now() * 0.001; });
             } else if (audioContext instanceof AudioContext) {
                 instant_secs = 1 / audioContext.sampleRate;
                 audioContext.createGainNode();  // Looks useless, but it gets the
@@ -881,9 +867,16 @@ org.anclab.steller = org.anclab.steller || {};
             fqueue.clear();
         }
 
+        // `scheduleTick` needs to be called with good solid regularity.
+        // If we're running the scheduler under node.js, it can only
+        // be because MIDI is needed, which needs high precision,
+        // indicated by 0. The `PeriodicTimer` and `JSNodeTimer` encapsulate
+        // this timing functionality required.
+        timer = new Timer(scheduleTick, 0, audioContext);
+
         /* Keep track of time. */
         var kFrameInterval = 1/60;
-        var clockDt = 0.05; // Use a 60Hz time step.
+        var clockDt = timer.computeAheadInterval_secs || 0.05; // Use a 60Hz time step.
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var clock = new Clock(time_secs(), 0, clockDt, 1.0);
         var now_secs = clock.t1;
@@ -934,13 +927,6 @@ org.anclab.steller = org.anclab.steller || {};
                 }
             }
         }
-
-        // `scheduleTick` needs to be called with good solid regularity.
-        // If we're running the scheduler under node.js, it can only
-        // be because MIDI is needed, which needs high precision,
-        // indicated by 0. The `PeriodicTimer` and `JSNodeTimer` encapsulate
-        // this timing functionality required.
-        timer = new Timer(scheduleTick, 0, audioContext);
 
         // Schedules the model by placing it into the processing queue.
         function schedule(model) {
@@ -1854,12 +1840,10 @@ org.anclab.steller = org.anclab.steller || {};
     //
 
     function PeriodicTimer(callback, precision_ms) {
-        var requestAnimationFrame = (window.requestAnimationFrame ||
-                window.mozRequestAnimationFrame ||
-                window.webkitRequestAnimationFrame ||
-                window.msRequestAnimationFrame);
 
-        if (!requestAnimationFrame) {
+        var requestAnimationFrame = getRequestAnimationFrameFunc();
+
+        if (detectBrowserEnv() && !requestAnimationFrame) {
             throw new Error('PeriodicTimer needs requestAnimationFrame support. Use a sufficiently modern browser.');
         }
 
@@ -1874,7 +1858,7 @@ org.anclab.steller = org.anclab.steller || {};
             // setInterval based code because the performance is as bad
             // as with setTimeout anyway -
             //      {"N":1500,"dt":10,"mean":-687.63,"min":-1381,"max":-1,"deviation":402.51}
-            precision_ms = Math.min(Math.max(window.document ? 15 : 1, precision_ms), 33);
+            precision_ms = Math.min(Math.max(detectBrowserEnv() ? 15 : 1, precision_ms), 33);
         }
 
         if (requestAnimationFrame && precision_ms >= 12) {
@@ -1924,6 +1908,10 @@ org.anclab.steller = org.anclab.steller || {};
             console.error("WARNING: High precision timing used. May impact performance.");
         }
 
+        // Indicate a usable compute ahead interval based on how
+        // frequently the callbacks happen;
+        self.computeAheadInterval_secs = (Math.round(precision_ms * 3.333)) / 1000;
+
         return self;
     }
 
@@ -1938,7 +1926,8 @@ org.anclab.steller = org.anclab.steller || {};
 
     function JSNodeTimer(callback, precision_ms, audioContext) {
         if (audioContext) {
-            var jsnode = audioContext.createJavaScriptNode(1024);
+            var kBufferSize = 1024;
+            var jsnode = audioContext.createJavaScriptNode(kBufferSize);
             jsnode.onaudioprocess = function (event) {
                 callback(); // For the moment, no timing information within these.
             };
@@ -1969,7 +1958,12 @@ org.anclab.steller = org.anclab.steller || {};
                 }
                 return running;
             });
-            return self;
+
+            // Indicate a usable compute ahead interval based on how
+            // frequently the callbacks happen;
+            self.computeAheadInterval_secs = (Math.round(kBufferSize * 2.5)) / audioContext.sampleRate;
+
+           return self;
         } else {
             return PeriodicTimer.call(this, callback, precision_ms);
         }
@@ -2232,4 +2226,56 @@ org.anclab.steller = org.anclab.steller || {};
     steller.UI            = UI;
     steller.Util          = Util;
 
-}(window, org.anclab.steller));
+    // A function to find out if we're running in a browser environment.
+    // The other environment possible is node.js.
+    function detectBrowserEnv() {
+        try {
+            window.document.getElementById;
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Until requestAnimationFrame comes standard in all browsers, test
+    // for the prefixed names as well.
+    function getRequestAnimationFrameFunc() {
+        try {
+            return (window.requestAnimationFrame ||
+                    window.webkitRequestAnimationFrame ||
+                    window.mozRequestAnimationFrame ||
+                    window.msRequestAnimationFrame);
+        } catch (e) {
+            return undefined;
+        }
+    }
+
+    // Gets the AudioContext class when in a browser environment.
+    function getAudioContext() {
+        try {
+            return (window.webkitAudioContext || window.mozAudioContext);
+        } catch (e) {
+            return undefined;
+        }
+    }
+
+    // Get a time function based on the high resolution performance
+    // timer if present. The returned function, when called, will
+    // give time in seconds.
+    function getHighResPerfTimeFunc() {
+        try {
+            var perf = window.performance;
+            var perfNow = (perf && (perf.now || perf.webkitNow || perf.mozNow));
+            if (perfNow) {
+                // High resolution performance time available.
+                return function () {
+                    return perfNow.call(perf) * 0.001;
+                };
+            }
+        } catch (e) {
+        }
+
+        return undefined;
+     }
+
+}((function () { try { return window; } catch (e) { return undefined; } }()), org.anclab.steller));
