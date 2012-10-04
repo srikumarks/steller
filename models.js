@@ -122,6 +122,131 @@ function (sh) {
         return model;
     };
 
+    // Connect any single channel output to the input of this and read off
+    // mean signal value via the "mean" param. Also has a "sigma" param for the
+    // standard deviation. Note that if you want to know when mean or
+    // sigma change, you can 'watch' the params. This model has no
+    // outputs.
+    models.probe = function () {
+
+        var mean = Param({min: -1, max: 1, value: 0});
+        var sigma = Param({min: -1, max: 1, value: 1});
+        var energy = Param({min: 0, max: 1, value: 0});
+
+        var js = AC.createJavaScriptNode(512, 1, 1);
+        var sum = 0, sumSq = 0, k = 1 - Math.exp(Math.log(0.5) / 1024);
+
+        js.onaudioprocess = function (e) {
+            var b = e.inputBuffer.getChannelData(0);
+            var N = b.length, i = 0, v = 0;
+            for (i = 0; i < N; ++i) {
+                v = b[i];
+                sum += k * (v - sum);
+                sumSq += k * (v * v - sumSq);
+            }
+
+            mean.value = sum;
+            energy.value = sumSq;
+            sigma.value = Math.sqrt(Math.max(0, sumSq - sum * sum));
+        };
+
+        js.connect(AC.destination); // TODO: FIXME: Is this necessary?
+
+        var model = SoundModel({}, [js], []);
+        model.mean = mean;
+        model.sigma = sigma;
+        model.energy = energy;
+
+        return model;
+    };
+
+    // mic support
+    //
+    // Has a single output that serves up the audio stream coming
+    // from the computer's microphone. Since setting up the microphone
+    // needs async calls, the constructed model exposes a 'ready'
+    // parameter that you can watch to determine when the mic is ready.
+    //
+    // If the ready parameter is -1, it means mic is not supported or
+    // some error occurred. If it is +1, then all systems are a go. It
+    // remains at 0 during initialization.
+    //
+    // Under normal circumstances, you can write code pretending that
+    // the user will grant mic input and setup all the graphs you need,
+    // ignoring `ready` status. Then when mic input is available, it
+    // will automatically flow through the graph you've setup. This is
+    // because the mic model exposes its output immediately as a gain node.
+    // If you ignore ready, then lack of permission to access the mic will
+    // be equivalent to a mic input that generates pure silence.
+    //
+    // Minimal code sample -
+    //
+    //      var models = org.anclab.steller.Models(sh);
+    //      var mic = models.mic();
+    //      mic.connect(sh.audioContext.destination); // .. or wherever.
+    //
+    //      // If you want...
+    //      mic.ready.watch(function (status) {
+    //          if (status === -1) {
+    //              alert('Mic input access not granted. ' + mic.error);
+    //          } else {
+    //              console.assert(status === 1);
+    //          }
+    //      });
+    //
+    models.mic = (function () {
+        function getUserMedia(dictionary, callback, errback) {
+            try {
+                navigator.webkitGetUserMedia(dictionary, callback, errback);
+            } catch (e) {
+                errback(e);
+            }
+        }
+
+        function setupMic(micModel, stream) {
+            if (!micSource) {
+                console.assert(stream);
+                micSource = AC.createMediaStreamSource(stream);
+            }
+
+            micSource.connect(micModel.outputs[0]);
+            micModel.error = null;
+            micModel.ready.value = 1;
+        }
+
+        var micSource; // Make only one mic source node per context.
+
+        return function () {
+            var micOut = AC.createGainNode();
+            var micModel = SoundModel({}, [], [micOut]);
+
+            // 'ready' parameter = 1 indicates availability of mic,
+            // -1 indicates error (in which case you can look at micModel.error)
+            // and 0 indicates initialization in progress.
+            micModel.ready = Param({min: -1, max: 1, value: 0});
+
+            // Expose a gain parameter so different parts of the graph can use
+            // different gains.
+            micModel.gain = Param({min: 0, max: 1, audioParam: micOut.gain});
+
+            if (micSource) {
+                setupMic(micModel, null);
+            } else {
+                getUserMedia({audio: true},
+                             function (stream) {
+                                 return setupMic(micModel, stream);
+                             },
+                             function (e) {
+                                 micModel.error = e;
+                                 micModel.gain.value = 0; // Mute it.
+                                 micModel.ready.value = -1;
+                             });
+            }
+
+            return micModel;
+        };
+    }());
+
     // A simple "load and play sample" model that will load the given url when
     // the .load action is run, and can play the sound from start to finish.
     // Creating multiple sample models from the same URL will not incur
