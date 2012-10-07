@@ -1808,6 +1808,13 @@ org.anclab.steller = org.anclab.steller || {};
         // in the second argument.
         self.running = (options && ('running' in options) && options.running) || true;
 
+        // If the Models collection is available, instantiate it for
+        // this scheduler so that the user won't have to bother doing that
+        // separately.         
+        if (org.anclab.steller.Models) {
+            self.models = org.anclab.steller.Models(self);
+        }
+
         return self;
     }
 
