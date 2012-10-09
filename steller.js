@@ -217,13 +217,13 @@ org.anclab.steller = org.anclab.steller || {};
             if (inPin.constructor.name === 'AudioParam' || inPin.constructor.name === 'AudioGain') {
                 // a-rate connection.
                 outPin.connect(inPin);
-            } else {
-                console.assert(inPin.numberOfInputs === outPin.numberOfOutputs);
-
+            } else if (inPin.numberOfInputs === outPin.numberOfOutputs) {
                 for (i = 0, N = inPin.numberOfInputs; i < N; ++i) {
                     outPin.connect(inPin, i, i);
                 }
-            }
+            } else {
+                outPin.connect(inPin);
+           }
         };
 
         // ### disconnect
