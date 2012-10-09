@@ -2233,6 +2233,14 @@ org.anclab.steller = org.anclab.steller || {};
     steller.UI            = UI;
     steller.Util          = Util;
 
+    // Expose the ones that we use.
+    steller.requestAnimationFrame = (function (raf) {
+        return function (func) {
+            return raf(func);
+        };
+    }(getRequestAnimationFrameFunc()));
+    steller.AudioContext = getAudioContext();
+
     // A function to find out if we're running in a browser environment.
     // The other environment possible is node.js.
     function detectBrowserEnv() {
@@ -2251,7 +2259,10 @@ org.anclab.steller = org.anclab.steller || {};
             return (window.requestAnimationFrame ||
                     window.webkitRequestAnimationFrame ||
                     window.mozRequestAnimationFrame ||
-                    window.msRequestAnimationFrame);
+                    window.msRequestAnimationFrame ||
+                    (function (cb) {
+                        setTimeout(cb, 1000/60);
+                    }));
         } catch (e) {
             return undefined;
         }
