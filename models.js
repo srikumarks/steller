@@ -87,11 +87,14 @@ function (sh) {
         var dc = AC.createBufferSource();
         dc.buffer = dcBuffer;
         dc.loop = true;
-        dc.gain.value = value;
         dc.noteOn(0);
 
-        var model = SoundModel({}, [], [dc]);
-        model.level = Param({min: -1.0, max: 1.0, audioParam: dc.gain});
+        var gain = AC.createGainNode();
+        gain.gain.value = value;
+        dc.connect(gain);
+
+        var model = SoundModel({}, [], [gain]);
+        model.level = Param({min: -1.0, max: 1.0, audioParam: gain.gain});
 
         return model;
     };
