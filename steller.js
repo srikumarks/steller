@@ -1233,8 +1233,14 @@ org.anclab.steller = org.anclab.steller || {};
                 // range for a given track. When the arguments are not given,
                 // the whole track is played. Use track_iter.minIndex and maxIndex
                 // to determine valid values for the index range.
-                var i = (startIndex || 0), i_end = (endIndex || models.length);
-                
+                var i = 0, i_end = models.length;
+
+                if (arguments.length > 3) {
+                    console.assert(arguments.length === 5);
+                    i = startIndex;
+                    i_end = endIndex;
+                }
+
                 function iter(sched, clock, _) {
                     if (i < i_end) {
                         models[i++](sched, clock, iter);
