@@ -97,6 +97,8 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.loop_while(flag, model)` makes a model that will loop as long as the
   given `flag.valueOf()` is truthy. Once it becomes falsy, the loop terminates
   and continues on to the action that follows it in a sequence.
+- `sh.repeat(n, model)` makes a model that will repeat `model` the given `n` 
+  number of times.
 - `sh.fork(model1, model2, ..)` causes all the given models to start in
   "parallel" and waits for them to finish before continuing.
 - `sh.spawn(model1, model2, ...)` like `fork` causes all the given models to
