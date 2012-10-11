@@ -1,6 +1,6 @@
 Steller is a small framework for building composeable sound models in
 Javascript using the [Web Audio API]. It features a `GraphNode` abstraction
-that encapsulates dynamic signal flow graphs, `Parameterize` to add 
+that encapsulates dynamic signal flow graphs, `Param` objects to add 
 parameters of various kinds to objects and a `Scheduler` for sequencing
 audio events just in time. These classes are all available under the
 namespace `org.anclab.steller`.
@@ -19,28 +19,32 @@ nodes. The two primary methods it adds are -
 `obj` is an object to turn into a `GraphNode`, `inX` are input nodes and `outY`
 are output nodes (either `AudioNode` objects or `GraphNode`s).
 
-## Parameterize
+## Param
 
-Imparts the ability to add dynamic parameters to an object. The object is given
-a `params` field through which these parameters can be added and manipulated.
+`Param` objects encapsulate dynamic parameters to sound models and provide some basic
+glue functionality such as watching for changes and binding to HTML UI elements.
 
-*Usage*: `var obj = org.anclab.steller.Parameterize(obj);`
+*Usage*: `org.anclab.steller.Param(spec)` creates a `Param` object.
 
-- `obj.params.define({name: "param", min: 0, max: 100, value: 50})`
-- `obj.params.define({name: "param", min: 0, max: 100, audioParam: anAudioParam})`
-- `obj.params.define({name: "param", min: 0, max: 100, getter: function () {...}, setter: function (value) {...}})`
-- `obj.params.expose(obj2, "param1", "param2", ...)`
-- `obj.params.exposeAs(obj2, "paramName", "newParamName")`
-- `obj.params.watch("param", function (value, paramName, object) {...});`
-- `obj.params.unwatch("param", aPreviouslyInstalledCallback)`
+- `obj.param = Param({min: 0, max: 100, value: 50})`
+- `obj.param = Param({min: 0, max: 100, audioParam: anAudioParam})`
+- `obj.param = Param({options: ["one", "two", "three"], value: "one"})`
+- `obj.param.define({min: 0, max: 100, getter: function () {...}, setter: function (value) {...}})`
+- `obj.param.watch(function (value, param) {...});`
+- `obj.param.unwatch(aPreviouslyInstalledCallback)`
+- `obj.param.changed()` forces observer notification.
+- `Param.names(obj)` gets names of all exposed params in `obj`
+- `obj.param.bind(elem, optional<Scheduler>)`
+- `obj.param.unbind(elem)`
+
 
 Ex:
 
-    obj.params.define({name: "griffinStrength", min: 0, max: 100, value: 20});
+    obj.griffinStrength = Param({min: 0, max: 100, value: 20});
     obj.griffinStrength.value = 40;
     console.log(obj.griffinStrength.valueOf()); // Prints 40.
     console.log(obj.griffinStrength.value);     // Prints 40.
-
+    obj.griffinStrength.bind('#strength'); // Binds to a slider described using a document.querySelector string.
 
 ## SoundModel
 
@@ -48,6 +52,8 @@ A sound model is just a parameterizable graph node.
 
     function SoundModel(obj, inputs, outputs) {
         return Parameterize(GraphNode(obj, inputs, outputs));
+        // Note that Parameterize, in the latest implementation, does nothing
+        // since parameters are now reified as objects.
     }
 
 This is available as `org.anclab.steller.SoundModel`.
