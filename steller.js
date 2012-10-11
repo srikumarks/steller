@@ -1123,15 +1123,38 @@ org.anclab.steller = org.anclab.steller || {};
         // Keeps executing model in a loop as long as flag.valueOf() is truthy.
         function loop_while(flag, model) {
             return function (sched, clock, next) {
-                function _break(sched, clock, _) {
-                    next(sched, clock, stop);
+
+                function loopWhileFlag() {
+                    if (flag.valueOf()) {
+                        model(sched, clock, loopWhileFlag);
+                    } else {
+                        next(sched, clock, stop);
+                    }
                 }
 
-                var stoppableModel = track(dynamic(function () {
-                    return flag.valueOf() ? cont : _break;
-                }), model);
+                loopWhileFlag();
+            };
+        }
 
-                loop(stoppableModel)(sched, clock, next);
+        // ### repeat(n, model)
+        //
+        // Produces a model that, when played, repeats the model `n` times.
+        // This means that the duration of the resultant model will be
+        // n times the duration of the given model (if it is a constant).
+        function repeat(n, model) {
+            return function (sched, clock, next) {
+                var counter = 0;
+
+                function repeatNTimes() {
+                    if (counter < n) {
+                        counter++;
+                        model(sched, clock, repeatNTimes);
+                    } else {
+                        next(sched, clock, stop);
+                    }
+                }
+
+                repeatNTimes();
             };
         }
 
@@ -1787,6 +1810,7 @@ org.anclab.steller = org.anclab.steller || {};
         self.delay          = delay;
         self.loop           = loop;
         self.loop_while     = loop_while;
+        self.repeat         = repeat;
         self.fork           = fork;
         self.spawn          = spawn;
         self.dynamic        = dynamic;
