@@ -836,7 +836,7 @@ org.anclab.steller = org.anclab.steller || {};
             if (state) {
                 if (!running) {
                     running = true;
-                    clock.jumpTo(time_secs());
+                    mainClock.jumpTo(time_secs());
                     timer.start();
                 }
             } else {
@@ -878,9 +878,10 @@ org.anclab.steller = org.anclab.steller || {};
         var kFrameInterval = 1/60;
         var clockDt = timer.computeAheadInterval_secs || 0.05; // Use a 60Hz time step.
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
-        var clock = new Clock(time_secs(), 0, clockDt, 1.0);
-        var now_secs = clock.t1;
+        var mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
+        var now_secs = mainClock.t1;
         var last_now_secs = now_secs;
+        var advanceDt = 0;
 
         /* Main scheduling work happens here.  */
         function scheduleTick() {
@@ -889,11 +890,12 @@ org.anclab.steller = org.anclab.steller || {};
             now_secs = t + clockDt;
 
             /* If lagging behind, advance time before processing models. */
-            while (now_secs - clock.t1 > clockBigDt) {
-                clock.advance(clockBigDt);
+            while (t - mainClock.t1 > clockBigDt) {
+                advanceDt = t - mainClock.t1;
+                mainClock.advance(advanceDt);
             }
 
-            while (clock.t1 < now_secs) {
+            while (mainClock.t1 < now_secs) {
                 if (uqueue.length > 0) {
                     length = uqueue.length;
                     for (i = 0; i < length; ++i) {
@@ -910,11 +912,12 @@ org.anclab.steller = org.anclab.steller || {};
                  * we pass them the scheduler itself.
                  */
                 for (i = 0; i < length; ++i) {
-                    queue.remove()(self, clock, cont);
+                    queue.remove()(self, mainClock, cont);
                 }
 
-                clock.tick();
+                mainClock.tick();
                 last_now_secs = now_secs;
+                advanceDt = 0;
             }
 
             if (fqueue.length > 0) {
@@ -968,7 +971,7 @@ org.anclab.steller = org.anclab.steller || {};
         // The playing starts immediately. See `delay` below if you want
         // the model to start playing some time in the future.
         function playNow(model) {
-            model(self, clock.copy(), stop);
+            model(self, mainClock.copy(), stop);
         }
 
         var play = (function () {
@@ -984,7 +987,8 @@ org.anclab.steller = org.anclab.steller || {};
                     if (audioContext.currentTime === 0) {
                         setTimeout(waitForAudioClockStartAndPlay, 100, model);
                     } else {
-                        clock.jumpTo(time_secs());
+                        mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
+                        now_secs = mainClock.t1;
                         self.play = play = playNow;
                         playNow(model);
                     }
@@ -1058,9 +1062,10 @@ org.anclab.steller = org.anclab.steller || {};
                     // and endTime so everything stays in sync. This results in
                     // an adjustment of the "past" of the delay to be consistent
                     // with the present and the future.
-                    if (now_secs > clock.t1) {
+                    if (advanceDt > 0 && clock.t1 < mainClock.t1) {
                         var dtr = clock.t1r;
-                        clock.advance(now_secs - last_now_secs);
+                        var step = advanceDt;//now_secs - last_now_secs;
+                        clock.advance(step);
                         dtr = clock.t1r - dtr;
                         startTime += dtr;
                         endTime += dtr;
@@ -1435,8 +1440,8 @@ org.anclab.steller = org.anclab.steller || {};
                     // and endTime so everything stays in sync. This results in
                     // an adjustment of the "past" of the delay to be consistent
                     // with the present and the future.
-                    if (now_secs > clock.t1) {
-                        step = now_secs - last_now_secs;
+                    if (advanceDt > 0 && clock.t1 < mainClock.t1) {
+                        step = advanceDt;//now_secs - last_now_secs;
                         dtr = clock.t1r;
                         clock.advance(step);
                         dtr = clock.t1r - dtr;
