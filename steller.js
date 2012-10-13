@@ -1411,13 +1411,18 @@ org.anclab.steller = org.anclab.steller || {};
                                     info.intervals.splice(0, 4);
                                 }
                                 scheduleFrame(animTick, info);
+                                return;
                             } else {
                                 // Animation ended.
                             }
                         }
+
+                        if (!info.end) {
+                            scheduleFrame(animTick, info);
+                        }
                     };
 
-                    animInfo = {clock: clock, intervals: [], startTime: clock.t1r, endTime: clock.t1r + dt.valueOf()};
+                    animInfo = {clock: clock, intervals: [], startTime: clock.t1r, endTime: clock.t1r + dt.valueOf(), end: false};
                     scheduleFrame(animTick, animInfo);
                 }
 
@@ -1485,6 +1490,7 @@ org.anclab.steller = org.anclab.steller || {};
                         clock.tick();
                         schedule(poll);
                     } else {
+                        animInfo.end = true;
                         if (clock.t2r > clock.t1r) {
                             next(sched, clock.nudgeToRel(endTime), stop);
                         } else {
