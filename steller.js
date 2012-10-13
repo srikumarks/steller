@@ -1315,10 +1315,25 @@ org.anclab.steller = org.anclab.steller || {};
         //
         // A model that simply fires the given call at the right time, takes
         // zero duration itself and moves on.
-        function fire(callback) {
-            return function (sched, clock, next) {
-                callback(clock);
-                next(sched, clock, stop);
+        var fire;
+        if (options && options.diagnostics) {
+            console.log("fire: diagnostics on");
+            fire = function (callback) {
+                return function (sched, clock, next) {
+                    var t = time_secs();
+                    if (clock.t1 < t) {
+                        console.error('fire: Late by ' + Math.round(1000 * (t - clock.t1)) + ' ms');
+                    }
+                    callback(clock);
+                    next(sched, clock, stop);
+                };
+            };
+        } else {
+            fire = function (callback) {
+                return function (sched, clock, next) {
+                    callback(clock);
+                    next(sched, clock, stop);
+                };
             };
         }
 
