@@ -880,12 +880,11 @@ org.anclab.steller = org.anclab.steller || {};
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
         var now_secs = mainClock.t1;
-        var last_now_secs = now_secs;
         var advanceDt = 0;
 
         /* Main scheduling work happens here.  */
         function scheduleTick() {
-            var i, N, t, length, f, a;
+            var i, N, t, length, f, a, once = true;
             t = time_secs();
             now_secs = t + clockDt;
 
@@ -895,7 +894,7 @@ org.anclab.steller = org.anclab.steller || {};
                 mainClock.advance(advanceDt);
             }
 
-            while (mainClock.t1 < now_secs) {
+            while (once || mainClock.t1 < now_secs) {
                 if (uqueue.length > 0) {
                     length = uqueue.length;
                     for (i = 0; i < length; ++i) {
@@ -915,9 +914,11 @@ org.anclab.steller = org.anclab.steller || {};
                     queue.remove()(self, mainClock, cont);
                 }
 
-                mainClock.tick();
-                last_now_secs = now_secs;
+                if (mainClock.t1 < now_secs) {
+                    mainClock.tick();
+                }
                 advanceDt = 0;
+                once = false;
             }
 
             if (fqueue.length > 0) {
@@ -1064,11 +1065,16 @@ org.anclab.steller = org.anclab.steller || {};
                     // with the present and the future.
                     if (advanceDt > 0 && clock.t1 < mainClock.t1) {
                         var dtr = clock.t1r;
-                        var step = advanceDt;//now_secs - last_now_secs;
+                        var step = advanceDt;
                         clock.advance(step);
                         dtr = clock.t1r - dtr;
                         startTime += dtr;
                         endTime += dtr;
+                    }
+
+                    if (clock.t1 > now_secs) {
+                        schedule(poll);
+                        return;
                     }
 
                     if (clock.t2r < endTime) {
@@ -1318,7 +1324,7 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
-        var kFrameAdvance = kFrameInterval;
+        var kFrameAdvance = kFrameInterval * 2;
 
         // ### display
         //
@@ -1446,7 +1452,7 @@ org.anclab.steller = org.anclab.steller || {};
                     // an adjustment of the "past" of the delay to be consistent
                     // with the present and the future.
                     if (advanceDt > 0 && clock.t1 < mainClock.t1) {
-                        step = advanceDt;//now_secs - last_now_secs;
+                        step = advanceDt;
                         dtr = clock.t1r;
                         clock.advance(step);
                         dtr = clock.t1r - dtr;
@@ -1471,6 +1477,11 @@ org.anclab.steller = org.anclab.steller || {};
                                 animInfo.intervals[3] = clock.rate.valueOf();
                             }
                         }
+                    }
+
+                    if (clock.t1 > now_secs) {
+                        schedule(poll);
+                        return;
                     }
 
                     if (animInfo && clock.t1r <= endTime) {
