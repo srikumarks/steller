@@ -836,7 +836,7 @@ org.anclab.steller = org.anclab.steller || {};
             if (state) {
                 if (!running) {
                     running = true;
-                    mainClock.jumpTo(time_secs());
+                    mainClock.advanceTo(time_secs());
                     timer.start();
                 }
             } else {
@@ -880,7 +880,7 @@ org.anclab.steller = org.anclab.steller || {};
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
         var now_secs = mainClock.t1;
-        var advanceDt = 0;
+        var advanceDt = 0.0;
 
         /* Main scheduling work happens here.  */
         function scheduleTick() {
@@ -917,7 +917,8 @@ org.anclab.steller = org.anclab.steller || {};
                 if (mainClock.t1 < now_secs) {
                     mainClock.tick();
                 }
-                advanceDt = 0;
+
+                advanceDt = 0.0;
                 once = false;
             }
 
@@ -1063,16 +1064,13 @@ org.anclab.steller = org.anclab.steller || {};
                     // and endTime so everything stays in sync. This results in
                     // an adjustment of the "past" of the delay to be consistent
                     // with the present and the future.
-                    if (advanceDt > 0 && clock.t1 < mainClock.t1) {
-                        var dtr = clock.t1r;
-                        var step = advanceDt;
-                        clock.advance(step);
-                        dtr = clock.t1r - dtr;
-                        startTime += dtr;
-                        endTime += dtr;
+                    if (advanceDt > 0.0 && clock.t1 < mainClock.t1) {
+                        clock.advance(advanceDt);
                     }
 
                     if (clock.t1 > now_secs) {
+                        // We're already ahead of time. Wait before
+                        // computing further ahead.
                         schedule(poll);
                         return;
                     }
@@ -1197,7 +1195,7 @@ org.anclab.steller = org.anclab.steller || {};
                     syncCount++;
                     if (syncCount === models.length) {
                         /* All models have finished. */
-                        next(sched, clock.jumpTo(clockJ.t1), stop);
+                        next(sched, clock.syncWith(clockJ), stop);
                     }
                 }
 
@@ -1447,23 +1445,16 @@ org.anclab.steller = org.anclab.steller || {};
                     //
                     // Furthermore, the delay needs to be cryo-frozen frozen
                     // during the lapse and then thawed when the playback
-                    // resumes. This also entails adjustment of the startTime
-                    // and endTime so everything stays in sync. This results in
-                    // an adjustment of the "past" of the delay to be consistent
-                    // with the present and the future.
-                    if (advanceDt > 0 && clock.t1 < mainClock.t1) {
-                        step = advanceDt;
-                        dtr = clock.t1r;
-                        clock.advance(step);
-                        dtr = clock.t1r - dtr;
-                        startTime += dtr;
-                        endTime += dtr;
+                    // resumes. This "cryo" is achieved by only adjusting the
+                    // real time and leaving the rate integrated time untouched.
+                    // That implies that "logically" nothing happened during the
+                    // advance - i.e. the world skipped some seconds, without
+                    // leaving a trace!
+                    if (advanceDt > 0.0 && clock.t1 < mainClock.t1) {
+                        clock.advance(advanceDt);
 
                         if (animInfo) {
-                            animTime += dtr;
                             animTimeAbs += step;
-                            animInfo.startTime = startTime;
-                            animInfo.endTime = endTime;
 
                             if (animInfo.intervals.length > 4) {
                                 // Leave only one frame in the queue intact.
@@ -1472,14 +1463,14 @@ org.anclab.steller = org.anclab.steller || {};
 
                             if (animInfo.intervals.length > 0) {
                                 animInfo.intervals[0] += step;
-                                animInfo.intervals[1] += dtr;
-                                animInfo.intervals[2] += dtr;
                                 animInfo.intervals[3] = clock.rate.valueOf();
                             }
                         }
                     }
 
                     if (clock.t1 > now_secs) {
+                        // We're already ahead of time. Wait before
+                        // computing further ahead.
                         schedule(poll);
                         return;
                     }
@@ -1752,7 +1743,7 @@ org.anclab.steller = org.anclab.steller || {};
                 cache = [];
                 for (i = 0, N = actions.length; i < N; ++i) {
                     a = actions[i];
-                    a.next(a.sched, clock ? clock.copy() : a.clock.jumpTo(t), stop);
+                    a.next(a.sched, clock ? clock.copy() : a.clock.advanceTo(t), stop);
                 }
             }
 
@@ -2084,15 +2075,20 @@ org.anclab.steller = org.anclab.steller || {};
         return c;
     };
 
-    // Advances the absolute time interval by dt and the rate-integrated
-    // one by dt * rate.
+    // Advances the absolute time interval by dt. Doesn't touch the
+    // rate integrated time. It is in general desirable to keep
+    // the rate integrated time continuous.
     Clock.prototype.advance = function (dt) {
-        var dtr = dt * this.rate.valueOf();
         this.t1 += dt;
         this.t2 += dt;
-        this.t1r += dtr;
-        this.t2r += dtr;
         return this;
+    };
+
+    // Advances the absolute time interval by dt = t - clock.t1. Doesn't 
+    // touch the rate integrated time. It is in general desirable to keep
+    // the rate integrated time continuous.
+    Clock.prototype.advanceTo = function (t) {
+        return this.advance(t - this.t1);
     };
 
     // Makes one scheduler time step. This just means that t1 takes
@@ -2115,6 +2111,17 @@ org.anclab.steller = org.anclab.steller || {};
         this.t2 += step_dt;
         this.t1r += step_dtr;
         this.t2r += step_dtr;
+        return this;
+    };
+
+    // syncWith will adjust the real time and the rate integrated
+    // time to sync with the given clock, but the rate will
+    // remain untouched and so will the time step.
+    Clock.prototype.syncWith = function (clock) {
+        this.t1 = clock.t1;
+        this.t2 = this.t1 + this.dt;
+        this.t1r = clock.t1r;
+        this.t2r = this.t1r + this.rate.valueOf() * this.dt;
         return this;
     };
 
