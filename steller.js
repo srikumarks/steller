@@ -879,14 +879,14 @@ org.anclab.steller = org.anclab.steller || {};
         var clockDt = timer.computeAheadInterval_secs || 0.05; // Use a 60Hz time step.
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
-        var now_secs = mainClock.t1;
+        var compute_upto_secs = mainClock.t1;
         var advanceDt = 0.0;
 
         /* Main scheduling work happens here.  */
         function scheduleTick() {
             var i, N, t, length, f, a, once = true;
             t = time_secs();
-            now_secs = t + clockDt;
+            compute_upto_secs = t + clockDt;
 
             /* If lagging behind, advance time before processing models. */
             while (t - mainClock.t1 > clockBigDt) {
@@ -894,7 +894,7 @@ org.anclab.steller = org.anclab.steller || {};
                 mainClock.advance(advanceDt);
             }
 
-            while (once || mainClock.t1 < now_secs) {
+            while (once || mainClock.t1 < compute_upto_secs) {
                 if (uqueue.length > 0) {
                     length = uqueue.length;
                     for (i = 0; i < length; ++i) {
@@ -914,7 +914,7 @@ org.anclab.steller = org.anclab.steller || {};
                     queue.remove()(self, mainClock, cont);
                 }
 
-                if (mainClock.t1 < now_secs) {
+                if (mainClock.t1 < compute_upto_secs) {
                     mainClock.tick();
                 }
 
@@ -996,7 +996,7 @@ org.anclab.steller = org.anclab.steller || {};
                         setTimeout(waitForAudioClockStartAndPlay, 100, model);
                     } else {
                         mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
-                        now_secs = mainClock.t1;
+                        compute_upto_secs = mainClock.t1;
                         self.play = play = playNow;
                         playNow(model);
                     }
@@ -1074,7 +1074,7 @@ org.anclab.steller = org.anclab.steller || {};
                         clock.advance(advanceDt);
                     }
 
-                    if (clock.t1 > now_secs) {
+                    if (clock.t1 > compute_upto_secs) {
                         // We're already ahead of time. Wait before
                         // computing further ahead.
                         schedule(poll);
@@ -1343,7 +1343,7 @@ org.anclab.steller = org.anclab.steller || {};
             };
         }
 
-        var kFrameAdvance = kFrameInterval * 2;
+        var kFrameAdvance = kFrameInterval;
 
         // ### display
         //
@@ -1489,7 +1489,7 @@ org.anclab.steller = org.anclab.steller || {};
                         }
                     }
 
-                    if (clock.t1 > now_secs) {
+                    if (clock.t1 > compute_upto_secs) {
                         // We're already ahead of time. Wait before
                         // computing further ahead.
                         schedule(poll);
@@ -1938,8 +1938,8 @@ org.anclab.steller = org.anclab.steller || {};
                     running = true;
                     requestAnimationFrame(function () {
                         if (running) {
-                            callback();
                             requestAnimationFrame(arguments.callee);
+                            callback();
                         }
                     });
                 }
