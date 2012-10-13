@@ -931,6 +931,12 @@ org.anclab.steller = org.anclab.steller || {};
                     f(t, a);
                 }
             }
+
+            // Finally, if there is an ontick handler installed, we call
+            // that for every tick, passing it the current time.
+            if (self.ontick) {
+                self.ontick(t);
+            }
         }
 
         // Schedules the model by placing it into the processing queue.

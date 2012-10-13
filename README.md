@@ -147,3 +147,6 @@ scheduled alongside audio actions in the same composition.
   following audio computations may need to be done a little before the visual
   animation finishes.
 
+If `sh.ontick` is set to a `function (t) {...}`, then it will be called for
+every scheduler tick at the end of all other operations. This is useful for
+2D/3D draw flush operations.
