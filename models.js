@@ -451,7 +451,6 @@ function (sh) {
             return sh.dynamic(function (clock) {
                 var source = trigger(clock, pitch.valueOf(), 1.0, startOffset, duration);
                 source.gain.value = 0;
-                source.gain.value = 0;
                 source.gain.setTargetValueAtTime(1.0, clock.t1, model.attackTime.value / 3);
                 source.playbackRate.setTargetValueAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
 
@@ -464,7 +463,7 @@ function (sh) {
                             })
                             ])),
                     sh.delay(duration, function (clock) {
-                        source.playbackRate.setTargetValueAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
+                        source.playbackRate.exponentialRampToValueAtTime(pitch.valueOf(), clock.t1);
                     })
                     ]);
             });
