@@ -477,5 +477,127 @@ function (sh) {
         sampleCache = {};
     };
 
+    // The builtin Javascript Audio node is not as capable as the other
+    // native nodes in that it cannot have AudioParams and it only has one
+    // input and one output, albeit with multiple channels. 
+    //
+    // This model expands the API of the javascript audio node by giving
+    // it multiple single channel inputs and outputs instead and audioParams 
+    // that can be set and scheduled similar to other native nodes.
+    //
+    // var jsn = models.jsnode({
+    //      numberOfInputs: 4,
+    //      numberOfOutputs: 5,
+    //      audioParams: {
+    //          gain: 1,
+    //          pitch: 1.5,
+    //          frequencyMode: 0.5
+    //      }
+    //      state: {}, // You can place additional k-rate parameters here.
+    //      onaudioprocess: function (event) {
+    //          // The following are all Float32Arrays you can access -
+    //          //      event.inputs[i]
+    //          //      event.outputs[i]
+    //          //      event.gain, event.pitch, event.frequencyMod
+    //          //
+    //          // 'this' will refer to the jsn model object within this
+    //          // handler. So you can get k-rate pitch value 
+    //          // using 'this.pitch.value'.
+    //      }
+    // });
+    //
+    // jsn.gain.value = 0.5;
+    // anotherGraphNode.connect(jsn, 0, 3);
+    // jsn.connect(AC.destination, 2);
+    //      // etc.
+    models.jsnode = function (spec) {
+
+        // Map inputs to merger inputs numbered [0, spec.numInputs)
+        // Map params to merger inputs numbered [spec.numInputs, spec.numInputs + numParams)
+        // Map outputs to splitter outputs numbered [0, spec.numOutputs)
+        var numParams = spec.audioParams ? spec.audioParams.length : 0;
+        var numInputs = spec.numberOfInputs + numParams;
+        var numOutputs = spec.numberOfOutputs;
+
+        var merger = AC.createChannelMerger(numInputs);
+        var splitter = AC.createChannelSplitter(numOutputs);
+        var inputNodes = [];
+        var i, N, node;
+        for (i = 0, N = numInputs; i < N; ++i) {
+            node = AC.createGainNode();
+            inputNodes.push(node);
+            node.connect(merger, 0, i);
+        }
+        var outputNodes = [];
+        for (i = 0, N = numOutputs; i < N; ++i) {
+            node = AC.createGainNode();
+            outputNodes.push(node);
+            splitter.connect(node, i);
+        }
+        var paramNames = Object.keys(spec.audioParams);
+        console.assert(!('inputs' in spec.audioParams));
+        console.assert(!('outputs' in spec.audioParams));
+        console.assert(!('playbackTime' in spec.audioParams));
+
+
+        var obj = Object.create(spec.state || {});
+        console.assert(!('inputs' in obj));
+        console.assert(!('outputs' in obj));
+        console.assert(!('playbackTime' in obj));
+
+        var inputs = [], outputs = [];
+        obj.inputs = inputs;
+        obj.outputs = outputs;
+
+        var onaudioprocess = function (event) {
+            var i, N;
+
+            // Prepare the buffers for access by the nested onaudioprocess handler.
+            for (i = 0, N = spec.numberOfInputs; i < N; ++i) {
+                inputs[i] = event.inputBuffer.getChannelData(i);
+            }
+            for (i = 0, N = numOutputs; i < N; ++i) {
+                outputs[i] = event.outputBuffer.getChannelData(i);
+            }
+
+            for (i = 0, N = paramNames.length; i < N; ++i) {
+                obj[paramNames[i]] = event.inputBuffer.getChannelData(spec.numberOfInputs + i);
+            }
+
+            obj.playbackTime = event.playbackTime;
+
+            // Call the handler. We bypass the event object entirely since
+            // there is nothing in there now that isn't present in `obj`.
+            spec.onaudioprocess.call(sm, obj);
+        };
+
+        var sm = SoundModel({}, inputNodes, outputNodes);
+
+        // Make a dc model to drive the gain nodes corresponding to
+        // audio parameters.
+        var dc = paramNames.length > 0 ? models.dc(1) : undefined;
+        paramNames.forEach(function (pn, i) {
+            var node = inputNodes[spec.numberOfInputs + i];
+            sm[pn] = node.gain;
+
+            // Initialize the AudioParams
+            node.gain.value = spec.audioParams[pn];
+
+            // Drive the param using the dc signal.
+            dc.connect(node);
+
+            // Make sure the user isn't shooting him/herself in
+            // the foot by duplicate mentions of param names.
+            console.assert(!(paramNames[i] in obj));
+        });
+
+        var jsn = sm.keep(AC.createJavaScriptNode(1024, numInputs, numOutputs));
+        merger.connect(jsn);
+        jsn.connect(splitter);
+        jsn.onaudioprocess = onaudioprocess;
+
+        return sm;
+    };
+
     return models;
 });
