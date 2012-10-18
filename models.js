@@ -262,13 +262,13 @@ function (sh) {
     //
     // You must run the .start action to start grabbing. You can stop 
     // using the .stop action.
-    models.spectrum = function (N) {
+    models.spectrum = function (N, smoothingFactor) {
         N = N || 1024;
 
         var analyser = AC.createAnalyser();
         analyser.fftSize = N * 2;
         analyser.frequencyBinCount = N;
-        analyser.smoothingTimeConstant = 0;
+        analyser.smoothingTimeConstant = arguments.length < 2 ? 0.1 : smoothingFactor;
         // Note that the analyser doesn't need to be connected to AC.destination.
 
         var model = SoundModel({}, [analyser], []);
