@@ -314,29 +314,25 @@ org.anclab.steller = org.anclab.steller || {};
     function Param(spec) {
         var self = Object.create(Param.prototype);
         self.spec = spec = processOptionsParam(Object.create(spec));
+        self.getter = undefined;
+        self.setter = undefined;
+        self.valueOf = undefined;       // Support for valueOf() protocol.
+        self.audioParam = undefined;
+        self.watchers = [];             // Maintain a per-parameter list of watchers.
+        self._value = undefined;
 
-        var getter, setter;
-
+        // Initialization.
         if (spec.audioParam) {
             self.audioParam = spec.audioParam;
-            getter = Param.getters.audioParam;
-            setter = Param.setters.audioParam;
+            self.getter = spec.getter || Param.getters.audioParam;
+            self.setter = spec.setter || Param.setters.audioParam;
         } else if (spec.options) {
-            getter = Param.getters.value;
-            setter = Param.setters.option;
+            self.getter = spec.getter || Param.getters.value;
+            self.setter = spec.setter || Param.setters.option;
         } else {
-            getter = Param.getters.value;
-            setter = Param.setters.value;
+            self.getter = spec.getter || Param.getters.value;
+            self.setter = spec.setter || Param.setters.value;
         }
-
-        self.getter = spec.getter || getter;
-        self.setter = spec.setter || setter;
-
-        // Support the .valueOf() protocol.
-        self.valueOf = self.getter;
-
-        // Maintain a per-parameter list of watchers.
-        self.watchers = [];
 
         if ('value' in spec) {
             self.setter(spec.value);
