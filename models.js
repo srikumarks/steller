@@ -339,6 +339,46 @@ function (sh) {
         return model;
     };
 
+    // A simple wrapper to get a decoded buffer.
+    var sampleCache = {};
+    function sampleKey(url) { return 'sound:' + url; }
+
+    models.load_sample = function (url, callback, errback) {
+        var key = sampleKey(url);
+        var buff = sampleCache[key];
+        if (buff) {
+            if (callback) {
+                callback(buff);
+            }
+            return buff;
+        } else if (callback) {
+            var xhr = new XMLHttpRequest();
+
+            xhr.open('GET', url, true);
+            xhr.responseType = 'arraybuffer';
+            xhr.onerror = function (e) {
+                console.error(e);
+                if (errback) {
+                    errback(e, url);
+                }
+            };
+            xhr.onload = function () {
+                AC.decodeAudioData(xhr.response, 
+                        function (buff) {
+                            callback(sampleCache[key] = buff);
+                            console.log("Sound [" + url + "] loaded!");
+                        },
+                        function (err) {
+                            console.error("Sound [" + url + "] failed to decode.");
+                            if (errback) {
+                                errback(err, url);
+                            }
+                        });
+            };
+            xhr.send();
+        }
+        return undefined;
+    };
 
     // A simple "load and play sample" model that will load the given url when
     // the .load action is run, and can play the sound from start to finish.
@@ -365,7 +405,6 @@ function (sh) {
     //      `theSound.play` will play the sound from start to finish and will respond to
     //          the clock's rate control. The sound will first be loaded if not loaded 
     //          already.
-    var sampleCache = {};
     models.sample = function (url, errback) {
         var level = AC.createGainNode();
         level.gain.value = 0.25;
@@ -375,8 +414,7 @@ function (sh) {
         model.attackTime = Param({min: 0.001, max: 10.0, value: 0.02, mapping: 'log'});
         model.releaseTime = Param({min: 0.001, max: 10.0, value: 0.1, mapping: 'log'});
 
-        var key = 'sound:' + url;
-        var soundBuff = sampleCache[key];
+        var soundBuff;
 
         // A scheduler task that will continue once loading completes.
         // You don't need to use this if you're using the .play action
@@ -388,32 +426,15 @@ function (sh) {
                 sched.perform(next, clock, sched.stop);
             } else {
                 var dt = clock.t1 - AC.currentTime;
-                var xhr = new XMLHttpRequest();
-
-                xhr.open('GET', url, true);
-                xhr.responseType = 'arraybuffer';
-                xhr.onerror = function (e) {
-                    console.error(e);
-                    if (errback) {
-                        errback(e, url);
-                    }
-                };
-                xhr.onload = function () {
-                    AC.decodeAudioData(xhr.response, 
-                            function (buff) {
-                                sampleCache[key] = soundBuff = buff;
-                                console.log("Sound [" + url + "] loaded!");
-                                model.duration = soundBuff.duration;
-                                sched.perform(next, clock.jumpTo(AC.currentTime + dt), sched.stop);
-                            },
-                            function (err) {
-                                console.error("Sound [" + url + "] failed to decode.");
-                                if (errback) { 
-                                    errback(err, url); 
-                                }
-                            });
-                };
-                xhr.send();
+                models.load_sample(
+                        url,
+                        function (buff) {
+                            soundBuff = buff;
+                            model.duration = soundBuff.duration;
+                            sched.perform(next, clock.jumpTo(AC.currentTime + dt), sched.stop);
+                        },
+                        errback
+                        );
             }
         };
 
