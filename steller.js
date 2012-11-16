@@ -875,16 +875,59 @@ org.anclab.steller = org.anclab.steller || {};
 
         /* Keep track of time. */
         var kFrameInterval = 1/60;
+        var kFrameAdvance = kFrameInterval;
         var clockDt = timer.computeAheadInterval_secs || 0.05; // Use a 60Hz time step.
         var clockBigDt = clockDt * 5; // A larger 10Hz time step.
         var mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
         var compute_upto_secs = mainClock.t1;
         var advanceDt = 0.0;
 
+        // A simple mechanism to adjust the "frame rate". Normally, this shouldn't
+        // be necessary, but given that we're operating audio and visuals in the
+        // same framework, the notion of a steady frame rate is needed to predict
+        // when to render stuff and how much further to compute. We compute audio
+        // 3 callbacks ahead of time.
+        //
+        // runningFrameInterval is the low pass filtered frame interval that is
+        // quantized to 60fps, 30fps or 15fps. The time constant of the filter
+        // is of the order of a second, so that instantaneous changes to frame
+        // rate don't disrupt the rate for just a few frames.
+        var adaptFrameInterval = (function () {
+            var runningFrameInterval = 1/60;
+            var lastTickTime_secs = mainClock.t1;
+
+            return function (t) {
+                // Adjust the notion of frame interval if the going rate is smooth.
+                var frameDt = t - lastTickTime_secs;
+                if (frameDt > 0.01 && frameDt < 0.07) {
+                    runningFrameInterval += 0.05 * (frameDt - runningFrameInterval);
+                    var test60 = Math.abs(Math.log(runningFrameInterval / (1/60)));
+                    var test30 = Math.abs(Math.log(runningFrameInterval / (1/30)));
+                    var test15 = Math.abs(Math.log(runningFrameInterval / (1/15)));
+                    if (test60 < test30 && test60 < test15) {
+                        kFrameInterval = 1/60;
+                    } else if (test30 < test60 && test30 < test15) {
+                        kFrameInterval = 1/30;
+                    } else if (test15 < test30 && test15 < test60) {
+                        kFrameInterval = 1/15;
+                    }
+
+                    kFrameAdvance = kFrameInterval;
+                    clockDt = 3.33 * kFrameInterval;
+                    clockBigDt = clockDt * 5;
+                }
+                lastTickTime_secs = t;
+            };
+        }());
+
         /* Main scheduling work happens here.  */
         function scheduleTick() {
             var i, N, t, length, f, a, once = true;
             t = time_secs();
+
+            adaptFrameInterval(t);
+
+            // Determine target time up to which we need to compute.
             compute_upto_secs = t + clockDt;
 
             /* If lagging behind, advance time before processing models. */
@@ -1341,8 +1384,6 @@ org.anclab.steller = org.anclab.steller || {};
                 };
             };
         }
-
-        var kFrameAdvance = kFrameInterval;
 
         // ### display
         //
