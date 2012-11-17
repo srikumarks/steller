@@ -380,6 +380,11 @@ function (sh) {
         return undefined;
     };
 
+    // Clears the sample cache to release resources.
+    models.load_sample.clearCache = function () {
+        sampleCache = {};
+    };
+
     // A simple "load and play sample" model that will load the given url when
     // the .load action is run, and can play the sound from start to finish.
     // Creating multiple sample models from the same URL will not incur
@@ -518,10 +523,8 @@ function (sh) {
         return model;
     };
 
-    // Clears the sample cache to release resources.
-    models.clearSampleCache = function () {
-        sampleCache = {};
-    };
+    // Expose clearCache via sample as well.
+    models.sample.clearCache = models.load_sample.clearCache;
 
     return models;
 });
