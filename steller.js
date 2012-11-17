@@ -199,6 +199,11 @@ org.anclab.steller = org.anclab.steller || {};
 
         node.numberOfInputs     = node.inputs.length;
         node.numberOfOutputs    = node.outputs.length;
+        console.assert(numberOfInputs + numberOfOutputs > 0);
+
+        // Get the audio context this graph is a part of.
+        node.context = (node.inputs[0] && node.inputs[0].context) || (node.outputs[0] && node.outputs[0].context);
+        console.assert(node.context);
 
         // ### connect
         //
@@ -207,6 +212,9 @@ org.anclab.steller = org.anclab.steller || {};
         // [AudioNode]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html#AudioNode-section
         node.connect = function (target, outIx, inIx) {
             var i, N, inPin, outPin;
+
+            /* If the target is not specified, then it defaults to the destination node. */
+            target = target || node.context.destination;
 
             /* Set default output pin indices to 0. */
             outIx = outIx || 0;
