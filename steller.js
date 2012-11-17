@@ -334,6 +334,8 @@ org.anclab.steller = org.anclab.steller || {};
             self.setter = spec.setter || Param.setters.value;
         }
 
+        self.valueOf = self.getter;
+
         if ('value' in spec) {
             self.setter(spec.value);
         }
