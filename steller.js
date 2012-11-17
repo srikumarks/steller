@@ -234,7 +234,9 @@ org.anclab.steller = org.anclab.steller || {};
                 }
             } else {
                 outPin.connect(inPin);
-           }
+            }
+
+            return node;
         };
 
         // ### disconnect
@@ -256,6 +258,8 @@ org.anclab.steller = org.anclab.steller || {};
                  * behaviour of AudioNode.disconnect() */
                 node.outputs.forEach(function (n) { n.disconnect(); });
             }
+
+            return node;
         };
 
         // ### keep and drop
@@ -285,6 +289,7 @@ org.anclab.steller = org.anclab.steller || {};
         for (i = 0, N = nodes.length - 1; i < N; ++i) {
             nodes[i].connect(nodes[i+1]);
         }
+        return GraphNode;
     };
 
 
