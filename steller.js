@@ -199,7 +199,7 @@ org.anclab.steller = org.anclab.steller || {};
 
         node.numberOfInputs     = node.inputs.length;
         node.numberOfOutputs    = node.outputs.length;
-        console.assert(numberOfInputs + numberOfOutputs > 0);
+        console.assert(node.numberOfInputs + node.numberOfOutputs > 0);
 
         // Get the audio context this graph is a part of.
         node.context = (node.inputs[0] && node.inputs[0].context) || (node.outputs[0] && node.outputs[0].context);
