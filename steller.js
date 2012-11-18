@@ -859,6 +859,11 @@ org.anclab.steller = org.anclab.steller || {};
             }
         });
 
+        // A frame rate observer that gets updated once in a while.
+        // If you want to update a display when frame rate changes,
+        // add a watcher.
+        self.frame_rate = Param({min: 15, max: 75, value: 60});
+
         // Scheduled actions are placed in an event tick queue. The queue is
         // processed on each `scheduleTick()`.  A pair of arrays used as the
         // event tick queue.  Models placed in queue are processed and the
@@ -911,26 +916,27 @@ org.anclab.steller = org.anclab.steller || {};
             var runningFrameInterval = 1/60;
             var lastTickTime_secs = mainClock.t1;
 
+            // Steller can periodically update a DOM element with id
+            // "steller_framerate" with the integer frame rate value
+            // periodically. If not present, then this has no impact.
+            var fr = typeof(document) !== 'undefined' && document.getElementById('steller_framerate');
+            var frUpdateInterval = 15;
+            var frUpdateCounter = frUpdateInterval;
+
             return function (t) {
                 // Adjust the notion of frame interval if the going rate is smooth.
                 var frameDt = t - lastTickTime_secs;
                 if (frameDt > 0.01 && frameDt < 0.07) {
                     runningFrameInterval += 0.05 * (frameDt - runningFrameInterval);
-                    var test60 = Math.abs(Math.log(runningFrameInterval / (1/60)));
-                    var test30 = Math.abs(Math.log(runningFrameInterval / (1/30)));
-                    var test15 = Math.abs(Math.log(runningFrameInterval / (1/15)));
-                    if (test60 < test30 && test60 < test15) {
-                        kFrameInterval = 1/60;
-                    } else if (test30 < test60 && test30 < test15) {
-                        kFrameInterval = 1/30;
-                    } else if (test15 < test30 && test15 < test60) {
-                        kFrameInterval = 1/15;
-                    }
-
-                    kFrameAdvance = kFrameInterval;
+                    kFrameAdvance = kFrameInterval = runningFrameInterval;
                     clockDt = 3.33 * kFrameInterval;
                     clockBigDt = clockDt * 5;
+                    if (frUpdateCounter-- <= 0) {
+                        self.frame_rate.value = Math.round(1/kFrameInterval);
+                        frUpdateCounter = frUpdateInterval;
+                    }
                 }
+
                 lastTickTime_secs = t;
             };
         }());
