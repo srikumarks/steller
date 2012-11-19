@@ -902,24 +902,23 @@ org.anclab.steller = org.anclab.steller || {};
         var compute_upto_secs = mainClock.t1;
         var advanceDt = 0.0;
 
-        // A simple mechanism to adjust the "frame rate". Normally, this shouldn't
-        // be necessary, but given that we're operating audio and visuals in the
-        // same framework, the notion of a steady frame rate is needed to predict
-        // when to render stuff and how much further to compute. We compute audio
-        // 3 callbacks ahead of time.
+        // A simple mechanism to adjust the "frame rate". Normally, this
+        // shouldn't be necessary, but given that we're operating audio and
+        // visuals in the same framework, the notion of a steady frame rate is
+        // needed to predict when to render stuff and how much further to
+        // compute. We compute audio 3 callbacks ahead of time.
         //
-        // runningFrameInterval is the low pass filtered frame interval that is
-        // quantized to 60fps, 30fps or 15fps. The time constant of the filter
-        // is of the order of a second, so that instantaneous changes to frame
-        // rate don't disrupt the rate for just a few frames.
+        // runningFrameInterval is the low pass filtered frame interval. The
+        // time constant of the filter is of the order of a second, so that
+        // instantaneous changes to frame rate don't disrupt the rate for just
+        // a few frames.
         var adaptFrameInterval = (function () {
             var runningFrameInterval = 1/60;
             var lastTickTime_secs = mainClock.t1;
 
-            // Steller can periodically update a DOM element with id
-            // "steller_framerate" with the integer frame rate value
-            // periodically. If not present, then this has no impact.
-            var fr = typeof(document) !== 'undefined' && document.getElementById('steller_framerate');
+            // Steller can periodically update the 'frame_rate' property
+            // (which is actually a Param). You can watch it for changes
+            // if you want.
             var frUpdateInterval = 15;
             var frUpdateCounter = frUpdateInterval;
 
