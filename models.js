@@ -534,12 +534,19 @@ function (sh) {
             outputNodes.push(node);
             splitter.connect(node, i);
         }
-        var paramNames = Object.keys(spec.audioParams);
-        console.assert(!('inputs' in spec.audioParams));
-        console.assert(!('outputs' in spec.audioParams));
-        console.assert(!('playbackTime' in spec.audioParams));
+        var paramNames;
+        if (spec.audioParams) {
+            paramNames = Object.keys(spec.audioParams);
+            console.assert(!('inputs' in spec.audioParams));
+            console.assert(!('outputs' in spec.audioParams));
+            console.assert(!('playbackTime' in spec.audioParams));
+        } else {
+            paramNames = [];
+        }
 
-
+        // Prepare the event object that will be passed to the jsnode
+        // callback. We initialize all parameters here so that the
+        // class of obj will not change within onaudioprocess.
         var obj = Object.create(spec.state || {});
         console.assert(!('inputs' in obj));
         console.assert(!('outputs' in obj));
@@ -548,6 +555,10 @@ function (sh) {
         var inputs = [], outputs = [];
         obj.inputs = inputs;
         obj.outputs = outputs;
+        for (i = 0, N = paramNames.length; i < N; ++i) {
+            obj[paramNames[i]] = null;
+        }
+        obj.playbackTime = AC.currentTime;
 
         var onaudioprocess = function (event) {
             var i, N;
