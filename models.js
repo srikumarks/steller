@@ -526,6 +526,9 @@ function (sh) {
     // Expose clearCache via sample as well.
     models.sample.clearCache = models.load_sample.clearCache;
 
+    ////////////////////////////////////////////////////////
+    // EXPERIMENTAL javascript node wrapper
+    //
     // The builtin Javascript Audio node is not as capable as the other
     // native nodes in that it cannot have AudioParams and it only has one
     // input and one output, albeit with multiple channels. 
@@ -534,24 +537,31 @@ function (sh) {
     // it multiple single channel inputs and outputs instead and audioParams 
     // that can be set and scheduled similar to other native nodes.
     //
+    // One major limitation is that the inputs to the jsnode are limited
+    // to single-channel pins. This can in principle be lifted, but would
+    // complicate the API at the moment and is perhaps not all that useful.
+    // So I've decided to live with the single-channel restriction for the 
+    // moment.
+    //
     // var jsn = models.jsnode({
     //      numberOfInputs: 4,
     //      numberOfOutputs: 5,
     //      audioParams: {
     //          gain: 1,
     //          pitch: 1.5,
-    //          frequencyMode: 0.5
+    //          frequencyMod: 0.5
     //      }
     //      state: {}, // You can place additional k-rate parameters here.
     //      onaudioprocess: function (event) {
     //          // The following are all Float32Arrays you can access -
     //          //      event.inputs[i]
     //          //      event.outputs[i]
-    //          //      event.gain, event.pitch, event.frequencyMod
+    //          //      event.gain, 
+    //          //      event.pitch, 
+    //          //      event.frequencyMod
     //          //
     //          // 'this' will refer to the jsn model object within this
-    //          // handler. So you can get k-rate pitch value 
-    //          // using 'this.pitch.value'.
+    //          // handler. So you can access other model parameters and methods.
     //      }
     // });
     //
@@ -624,7 +634,7 @@ function (sh) {
                 obj[paramNames[i]] = event.inputBuffer.getChannelData(spec.numberOfInputs + i);
             }
 
-            obj.playbackTime = event.playbackTime;
+            obj.playbackTime = event.playbackTime || AC.currentTime;
 
             // Call the handler. We bypass the event object entirely since
             // there is nothing in there now that isn't present in `obj`.
