@@ -146,11 +146,7 @@ org.anclab.steller = org.anclab.steller || {};
 
 #include "graphnode.js"
 #include "param.js"
-#include "queue.js"
 #include "scheduler.js"
-#include "periodictimer.js"
-#include "jsnodetimer.js"
-#include "clock.js"
 #include "ui.js"
 #include "util.js"
 

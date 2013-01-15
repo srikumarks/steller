@@ -1,3 +1,8 @@
+#include "queue.js"
+#include "periodictimer.js"
+#include "jsnodetimer.js"
+#include "clock.js"
+
 //
 // ## Scheduler
 //
@@ -1178,5 +1183,4 @@ function Scheduler(audioContext, options) {
 
     return self;
 }
-
 
