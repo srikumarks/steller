@@ -4,7 +4,7 @@ steller.js : .steller.tmp.js
 	cljs --compilation_level=SIMPLE_OPTIMIZATIONS .steller.tmp.js > steller.js
 	
 .steller.tmp.js : src/*.js
-	cd src && ($(CPP) main.js | grep -v '^#' > ../.steller.tmp.js)
+	cd src && ($(CPP) main.js > ../.steller.tmp.js)
 
 clean : 
 	rm steller.js .steller.tmp.js
