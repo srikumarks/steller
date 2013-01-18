@@ -578,7 +578,7 @@ function Scheduler(audioContext, options) {
             var i = 0, i_end = models.length;
 
             if (arguments.length > 3) {
-                console.assert(arguments.length === 5);
+                ASSERT(arguments.length === 5);
                 i = startIndex;
                 i_end = endIndex;
             }
@@ -627,13 +627,11 @@ function Scheduler(audioContext, options) {
     // zero duration itself and moves on.
     var fire;
     if (options && options.diagnostics) {
-        console.log("fire: diagnostics on");
+        LOG(4, "fire: diagnostics on");
         fire = function (callback) {
             return function (sched, clock, next) {
                 var t = time_secs();
-                if (clock.t1 < t) {
-                    console.error('fire: Late by ' + Math.round(1000 * (t - clock.t1)) + ' ms');
-                }
+                WARNIF(clock.t1 < t, "fire: late by " + Math.round(1000 * (t - clock.t1)) + " ms");
                 callback(clock);
                 next(sched, clock, stop);
             };

@@ -147,9 +147,7 @@ Param.expose = function (obj1, obj2, listOfParamNames) {
     }
 
     listOfParamNames.forEach(function (n) {
-        if (n in obj2) {
-            console.error('WARNING: Overwriting parameter named [' + n + '] in Param.expose call.');
-        }
+        WARNIF(n in obj2, "Overwriting parameter named [" + n + "] in Param.expose call.");
         obj2[n] = obj1[n];
     });
 
@@ -265,7 +263,9 @@ Param.prototype.changed = function () {
 // is equivalent to p.alias("n") - i.e. the original
 // parameter is the one being aliased all the time.
 Param.prototype.alias = function (name, label) {
-    console.assert(name); // If name is not given, no point in calling alias().
+    ASSERT(name, "Param.alias call needs name as first argument.");
+    // If name is not given, no point in calling alias().
+
     var self = this;
 
     // Inherit from the original.

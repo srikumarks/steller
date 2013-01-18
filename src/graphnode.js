@@ -32,11 +32,11 @@ function GraphNode(node, inputs, outputs) {
 
     node.numberOfInputs     = node.inputs.length;
     node.numberOfOutputs    = node.outputs.length;
-    console.assert(node.numberOfInputs + node.numberOfOutputs > 0);
+    ASSERT(node.numberOfInputs + node.numberOfOutputs > 0);
 
     // Get the audio context this graph is a part of.
     node.context = (node.inputs[0] && node.inputs[0].context) || (node.outputs[0] && node.outputs[0].context);
-    console.assert(node.context);
+    ASSERT(node.context);
 
     // ### connect
     //

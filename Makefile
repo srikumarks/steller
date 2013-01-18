@@ -1,10 +1,10 @@
-CPP=/usr/bin/cpp -P -undef -Wundef -std=c99 -nostdinc -Wtrigraphs -fdollars-in-identifiers -C
+CPP=gcc -E -x c -DDEBUG=0${DEBUG} -P -undef -Wundef -std=c99 -nostdinc -Wtrigraphs -fdollars-in-identifiers
 
-steller.js : .steller.tmp.js
-	cljs --compilation_level=SIMPLE_OPTIMIZATIONS .steller.tmp.js > steller.js
+steller.min.js : steller.js
+	cljs --compilation_level=SIMPLE_OPTIMIZATIONS steller.js > steller.min.js
 	
-.steller.tmp.js : src/*.js
-	cd src && ($(CPP) main.js > ../.steller.tmp.js)
+steller.js : lib/assert.js src/*.js
+	cd src && ($(CPP) -include ../lib/assert.js main.js > ../steller.js)
 
 clean : 
-	rm steller.js .steller.tmp.js
+	rm steller.js steller.min.js

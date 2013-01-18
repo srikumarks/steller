@@ -17,7 +17,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
 // Must've loaded steller.js before this.
-console.assert(org.anclab.steller);
+ASSERT(org.anclab.steller);
 
 org.anclab.steller.Util.augment('Models',
 function (sh) {
@@ -218,7 +218,7 @@ function (sh) {
     //          if (status === -1) {
     //              alert('Mic input access not granted. ' + mic.error);
     //          } else {
-    //              console.assert(status === 1);
+    //              ASSERT(status === 1);
     //          }
     //      });
     //
@@ -233,7 +233,7 @@ function (sh) {
 
         function setupMic(micModel, stream) {
             if (!micSource) {
-                console.assert(stream);
+                ASSERT(stream);
                 micSource = AC.createMediaStreamSource(stream);
             }
 
@@ -357,7 +357,8 @@ function (sh) {
             xhr.open('GET', url, true);
             xhr.responseType = 'arraybuffer';
             xhr.onerror = function (e) {
-                console.error(e);
+
+                ERROR(e);
                 if (errback) {
                     errback(e, url);
                 }
@@ -366,10 +367,10 @@ function (sh) {
                 AC.decodeAudioData(xhr.response, 
                         function (buff) {
                             callback(sampleCache[key] = buff);
-                            console.log("Sound [" + url + "] loaded!");
+                            LOG(0, "Sound [" + url + "] loaded!");
                         },
                         function (err) {
-                            console.error("Sound [" + url + "] failed to decode.");
+                            ERROR("Sound [" + url + "] failed to decode.");
                             if (errback) {
                                 errback(err, url);
                             }
@@ -444,7 +445,7 @@ function (sh) {
         };
 
         function trigger(clock, rate, velocity, sampleOffset, sampleDuration) {
-            console.assert(soundBuff); // Must be loaded already.
+            ASSERT(soundBuff); // Must be loaded already.
 
             var source = AC.createBufferSource();
             source.buffer = soundBuff;
@@ -596,9 +597,9 @@ function (sh) {
         var paramNames;
         if (spec.audioParams) {
             paramNames = Object.keys(spec.audioParams);
-            console.assert(!('inputs' in spec.audioParams));
-            console.assert(!('outputs' in spec.audioParams));
-            console.assert(!('playbackTime' in spec.audioParams));
+            ASSERT(!('inputs' in spec.audioParams));
+            ASSERT(!('outputs' in spec.audioParams));
+            ASSERT(!('playbackTime' in spec.audioParams));
         } else {
             paramNames = [];
         }
@@ -607,9 +608,9 @@ function (sh) {
         // callback. We initialize all parameters here so that the
         // class of obj will not change within onaudioprocess.
         var obj = Object.create(spec.state || {});
-        console.assert(!('inputs' in obj));
-        console.assert(!('outputs' in obj));
-        console.assert(!('playbackTime' in obj));
+        ASSERT(!('inputs' in obj));
+        ASSERT(!('outputs' in obj));
+        ASSERT(!('playbackTime' in obj));
 
         var inputs = [], outputs = [];
         obj.inputs = inputs;
@@ -658,7 +659,7 @@ function (sh) {
 
             // Make sure the user isn't shooting him/herself in
             // the foot by duplicate mentions of param names.
-            console.assert(!(paramNames[i] in obj));
+            ASSERT(!(paramNames[i] in obj), "Duplicate param name - ", paramNames[i]);
         });
 
         var jsn = sm.keep(AC.createJavaScriptNode(1024, numInputs, numOutputs));

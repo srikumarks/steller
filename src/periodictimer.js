@@ -90,9 +90,7 @@ function PeriodicTimer(callback, precision_ms) {
         return running;
     });
 
-    if (precision_ms <= 5) {
-        console.error("WARNING: High precision timing used. May impact performance.");
-    }
+    WARNIF(precision_ms <= 5, "High precision timing used. May impact performance.");
 
     // Indicate a usable compute ahead interval based on how
     // frequently the callbacks happen;
