@@ -100,7 +100,7 @@ function (sh) {
                 osc.connect(gain);
                 gain.connect(output);
                 osc.noteOn(clock.t1);
-                osc.noteOff(clock.t1 + dur);
+                osc.stop(clock.t1 + dur);
             });
         };
 
@@ -120,6 +120,9 @@ function (sh) {
 
         var model = SoundModel({}, [], [gain]);
         model.level = Param({min: -1.0, max: 1.0, audioParam: gain.gain});
+        model.stop = function (t) {
+            dc.stop(t);
+        };
 
         return model;
     };
@@ -511,7 +514,7 @@ function (sh) {
                             sh.delay(activeDur), 
                             sh.fire(function (clock) {
                                 source.gain.setTargetValueAtTime(0.0, clock.t1, model.releaseTime.value / 3);
-                                source.noteOff(clock.t1 + 12 * model.releaseTime.value);
+                                source.stop(clock.t1 + 12 * model.releaseTime.value);
                             })
                             ])),
                     sh.delay(duration, function (clock) {
