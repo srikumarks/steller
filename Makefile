@@ -3,7 +3,7 @@ CPP=gcc -E -x c -DDEBUG=0${DEBUG} -P -undef -Wundef -std=c99 -nostdinc -Wtrigrap
 steller.min.js : steller.js
 	cljs --compilation_level=SIMPLE_OPTIMIZATIONS steller.js > steller.min.js
 	
-steller.js : lib/assert.js src/*.js
+steller.js : lib/assert.js src/*.js src/models/*.js
 	cd src && ($(CPP) -include ../lib/assert.js main.js > ../steller.js)
 
 clean : 
