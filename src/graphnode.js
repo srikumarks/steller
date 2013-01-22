@@ -27,9 +27,8 @@
 // depart from the "connect" protocol and implement it any way you like :D
 //
 var GraphNode = (function () {
-    var nextNodeID = 1;
 
-    return function GraphNode(node, inputs, outputs) {
+    function GraphNode(node, inputs, outputs) {
         node.inputs             = inputs || [];
         node.outputs            = outputs || [];
 
@@ -98,58 +97,70 @@ var GraphNode = (function () {
             return node;
         };
 
-        var idkey = '#org.anclab.steller.nodeID';
-
         // ### keep and drop
         //
         // Javascript audio nodes need to be kept around in order to prevent them
         // from being garbage collected. This is a bug in the current system and
         // `keep` and `drop` are a temporary solution to this problem. However,
         // you can also use them to keep around other nodes.
-        node.keep = function (node) {
-            var nodeID = node[idKey];
-            if (!nodeID) {
-                nodeID = nextNodeID++;
-                Object.defineProperty(node, idKey, {
-                    writable: false,
-                    enumerable: false,
-                    configurable: false,
-                    value: nodeID
-                });
-            }
-            GraphNode._preservedNodes[nodeID] = node;
-            return node;
+        
+        var preservedNodes = {};
+        var thisNodeID = getOrAssignNodeID(node);
+
+        node.keep = function (childNode) {
+            var theNode = childNode || node;
+            var id = getOrAssignNodeID(theNode);
+            preservedNodes[id] = theNode;
+            return theNode;
         };
 
-        node.drop = function (node) {
-            var id = node[idKey];
-            if (id) {
-                delete GraphNode._preservedNodes[id];
+        node.drop = function (childNode) {
+            if (childNode) {
+                var id = getOrAssignNodeID(childNode);
+                delete preservedNodes[id];
+            } else {
+                delete GraphNode._preservedNodes[thisNodeID];
             }
         };
+
+        GraphNode._preservedNodes[thisNodeID] = preservedNodes;
 
         return node;
+    }
+
+    var nextNodeID = 1;
+    var nodeIDKey = '#org.anclab.steller.GraphNode.globalid';
+
+    function getOrAssignNodeID(node) {
+        var id = node[nodeIDKey];
+        if (!id) {
+            id = nextNodeID++;
+            Object.defineProperty(node, nodeIDKey, {
+                value: id,
+                writable: false,
+                enumerable: false,
+                configurable: false
+            });
+        }
+        return id;
+    }
+
+    // Keep references to nodes that need to be explicitly preserved.
+    // This currently applies to JS audio nodes, because the system
+    // seems to throw away references to it even if it is running.
+    // Use the keep()/drop() methods to preserve or discard nodes.
+    GraphNode._preservedNodes = {};
+
+    // Takes an array of nodes and connects them up in a chain.
+    GraphNode.chain = function (nodes) {
+        var i, N;
+        for (i = 0, N = nodes.length - 1; i < N; ++i) {
+            nodes[i].connect(nodes[i+1]);
+        }
+        return GraphNode;
     };
+
+    return GraphNode;
 }());
 
-// Takes an array of nodes and connects them up in a chain.
-GraphNode.chain = function (nodes) {
-    var i, N;
-    for (i = 0, N = nodes.length - 1; i < N; ++i) {
-        nodes[i].connect(nodes[i+1]);
-    }
-    return GraphNode;
-};
-
-
-// Keep references to nodes that need to be explicitly preserved.
-// This currently applies to JS audio nodes, because the system
-// seems to throw away references to it even if it is running.
-// Use the keep()/drop() methods to preserve or discard nodes.
-Object.defineProperty(GraphNode, '_preservedNodes', {
-    value: {},
-    writable: false,
-    enumerable: false,
-    configurable: false
-});
 
