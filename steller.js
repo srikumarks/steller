@@ -145,27 +145,6 @@ org.anclab.steller = org.anclab.steller || {};
 (function (window, steller) {
 
     //
-    // ## SoundModel
-    //
-    // A "sound model" is a graph node with support for parameters.
-    //
-    // `obj` is the object to turn into a "sound model"
-    // 
-    // `inputs` is the array of graph nodes (or sound models) that constitute
-    // the input for this model.
-    //
-    // `outputs` is the array of graph nodes (or sound models) that constitute
-    // the output for this model.
-    //
-    // By making the inputs and outputs explicit, we can make
-    // sound models whose output can be piped through other models
-    // before it hits the audio context's destination.
-    //
-    // Sound models are scheduled using the Scheduler (org.anclab.steller.Scheduler)
-    //
-    var SoundModel = GraphNode;
-
-    //
     // ## GraphNode
     //
     // Makes an object into a node that can be used in a signal
@@ -193,106 +172,164 @@ org.anclab.steller = org.anclab.steller || {};
     // Of course, if you're wrapping all audio nodes anyway, you're free to
     // depart from the "connect" protocol and implement it any way you like :D
     //
-    function GraphNode(node, inputs, outputs) {
-        node.inputs             = inputs || [];
-        node.outputs            = outputs || [];
+    var GraphNode = (function () {
 
-        node.numberOfInputs     = node.inputs.length;
-        node.numberOfOutputs    = node.outputs.length;
-        console.assert(node.numberOfInputs + node.numberOfOutputs > 0);
+        function GraphNode(node, inputs, outputs) {
+            node.inputs             = inputs || [];
+            node.outputs            = outputs || [];
 
-        // Get the audio context this graph is a part of.
-        node.context = (node.inputs[0] && node.inputs[0].context) || (node.outputs[0] && node.outputs[0].context);
-        console.assert(node.context);
+            node.numberOfInputs     = node.inputs.length;
+            node.numberOfOutputs    = node.outputs.length;
+            console.assert(node.numberOfInputs + node.numberOfOutputs > 0);
 
-        // ### connect
-        //
-        // Same function signature as with the Web Audio API's [AudioNode].
-        //
-        // [AudioNode]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html#AudioNode-section
-        node.connect = function (target, outIx, inIx) {
-            var i, N, inPin, outPin;
+            // Get the audio context this graph is a part of.
+            node.context = (node.inputs[0] && node.inputs[0].context) || (node.outputs[0] && node.outputs[0].context);
+            console.assert(node.context);
 
-            /* If the target is not specified, then it defaults to the destination node. */
-            target = target || node.context.destination;
+            // ### connect
+            //
+            // Same function signature as with the Web Audio API's [AudioNode].
+            //
+            // [AudioNode]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html#AudioNode-section
+            node.connect = function (target, outIx, inIx) {
+                var i, N, inPin, outPin;
 
-            /* Set default output pin indices to 0. */
-            outIx = outIx || 0;
-            inIx = inIx || 0;
-            outPin = node.outputs[outIx];
+                /* If the target is not specified, then it defaults to the destination node. */
+                target = target || node.context.destination;
 
-            /* The "receiving pin" could be a simple AudioNode
-             * instead of a wrapped one. */
-            inPin = target.inputs ? target.inputs[inIx] : target;
+                /* Set default output pin indices to 0. */
+                outIx = outIx || 0;
+                inIx = inIx || 0;
+                outPin = node.outputs[outIx];
 
-            if (inPin.constructor.name === 'AudioParam' || inPin.constructor.name === 'AudioGain') {
-                // a-rate connection.
-                outPin.connect(inPin);
-            } else if (inPin.numberOfInputs === outPin.numberOfOutputs) {
-                for (i = 0, N = inPin.numberOfInputs; i < N; ++i) {
-                    outPin.connect(inPin, i, i);
+                /* The "receiving pin" could be a simple AudioNode
+                 * instead of a wrapped one. */
+                inPin = target.inputs ? target.inputs[inIx] : target;
+
+                if (inPin.constructor.name === 'AudioParam' || inPin.constructor.name === 'AudioGain') {
+                    // a-rate connection.
+                    outPin.connect(inPin);
+                } else if (inPin.numberOfInputs === outPin.numberOfOutputs) {
+                    for (i = 0, N = inPin.numberOfInputs; i < N; ++i) {
+                        outPin.connect(inPin, i, i);
+                    }
+                } else {
+                    outPin.connect(inPin);
                 }
-            } else {
-                outPin.connect(inPin);
-            }
+
+                return node;
+            };
+
+            // ### disconnect
+            //
+            // Same function signature as with the Web Audio API's [AudioNode].
+            // ... but we also support providing the pin numbers to disconnect
+            // as arguments.
+            //
+            // [AudioNode]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html#AudioNode-section
+            node.disconnect = function () {
+                if (arguments.length > 0) {
+                    /* Disconnect only the output pin numbers identified in
+                     * the arguments list. */
+                    Array.prototype.forEach.call(arguments, function (n) {
+                        node.outputs[n].disconnect();
+                    });
+                } else {
+                    /* Disconnect all output pins. This is also the 
+                     * behaviour of AudioNode.disconnect() */
+                    node.outputs.forEach(function (n) { n.disconnect(); });
+                }
+
+                return node;
+            };
+
+            // ### keep and drop
+            //
+            // Javascript audio nodes need to be kept around in order to prevent them
+            // from being garbage collected. This is a bug in the current system and
+            // `keep` and `drop` are a temporary solution to this problem. However,
+            // you can also use them to keep around other nodes.
+
+            var preservedNodes = {};
+            var thisNodeID = getOrAssignNodeID(node);
+
+            node.keep = function (childNode) {
+                var theNode = childNode || node;
+                var id = getOrAssignNodeID(theNode);
+                preservedNodes[id] = theNode;
+                return theNode;
+            };
+
+            node.drop = function (childNode) {
+                if (childNode) {
+                    var id = getOrAssignNodeID(childNode);
+                    delete preservedNodes[id];
+                } else {
+                    delete GraphNode._preservedNodes[thisNodeID];
+                }
+            };
+
+            GraphNode._preservedNodes[thisNodeID] = preservedNodes;
 
             return node;
-        };
-
-        // ### disconnect
-        //
-        // Same function signature as with the Web Audio API's [AudioNode].
-        // ... but we also support providing the pin numbers to disconnect
-        // as arguments.
-        //
-        // [AudioNode]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html#AudioNode-section
-        node.disconnect = function () {
-            if (arguments.length > 0) {
-                /* Disconnect only the output pin numbers identified in
-                 * the arguments list. */
-                Array.prototype.forEach.call(arguments, function (n) {
-                    node.outputs[n].disconnect();
-                });
-            } else {
-                /* Disconnect all output pins. This is also the 
-                 * behaviour of AudioNode.disconnect() */
-                node.outputs.forEach(function (n) { n.disconnect(); });
-            }
-
-            return node;
-        };
-
-        // ### keep and drop
-        //
-        // Javascript audio nodes need to be kept around in order to prevent them
-        // from being garbage collected. This is a bug in the current system and
-        // `keep` and `drop` are a temporary solution to this problem. However,
-        // you can also use them to keep around other nodes.
-
-        var preservedNodes = [];
-
-        node.keep = function (node) {
-            preservedNodes.push(node);
-            return node;
-        };
-
-        node.drop = function (node) {
-            preservedNodes = preservedNodes.filter(function (n) { return n !== node; });
-        };
-
-        return node;
-    }
-
-    // Takes an array of nodes and connects them up in a chain.
-    GraphNode.chain = function (nodes) {
-        var i, N;
-        for (i = 0, N = nodes.length - 1; i < N; ++i) {
-            nodes[i].connect(nodes[i+1]);
         }
+
+        var nextNodeID = 1;
+        var nodeIDKey = '#org.anclab.steller.GraphNode.globalid';
+
+        function getOrAssignNodeID(node) {
+            var id = node[nodeIDKey];
+            if (!id) {
+                id = nextNodeID++;
+                Object.defineProperty(node, nodeIDKey, {
+                    value: id,
+                    writable: false,
+                    enumerable: false,
+                    configurable: false
+                });
+            }
+            return id;
+        }
+
+        // Keep references to nodes that need to be explicitly preserved.
+        // This currently applies to JS audio nodes, because the system
+        // seems to throw away references to it even if it is running.
+        // Use the keep()/drop() methods to preserve or discard nodes.
+        GraphNode._preservedNodes = {};
+
+        // Takes an array of nodes and connects them up in a chain.
+        GraphNode.chain = function (nodes) {
+            var i, N;
+            for (i = 0, N = nodes.length - 1; i < N; ++i) {
+                nodes[i].connect(nodes[i+1]);
+            }
+            return GraphNode;
+        };
+
         return GraphNode;
-    };
+    }());
 
-
+    //
+    // ## SoundModel
+    //
+    // A "sound model" is a graph node with support for parameters.
+    //
+    // `obj` is the object to turn into a "sound model"
+    // 
+    // `inputs` is the array of graph nodes (or sound models) that constitute
+    // the input for this model.
+    //
+    // `outputs` is the array of graph nodes (or sound models) that constitute
+    // the output for this model.
+    //
+    // By making the inputs and outputs explicit, we can make
+    // sound models whose output can be piped through other models
+    // before it hits the audio context's destination.
+    //
+    // Sound models are scheduled using the Scheduler (org.anclab.steller.Scheduler)
+    //
+    var SoundModel = GraphNode;
+    
     // Utility for prohibiting parameter names such as "constructor",
     // "hasOwnProperty", etc.
     var dummyObject = {params: true, length: 1};
