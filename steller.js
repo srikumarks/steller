@@ -1,4 +1,4 @@
-var LOG_LEVEL = 1;
+var LOG_LEVEL = 4;
 org = typeof(org) === 'undefined' ? {} : org;
 org.anclab = org.anclab || {};
 org.anclab.steller = org.anclab.steller || {};
@@ -9,9 +9,9 @@ var GraphNode = (function () {
         node.outputs = outputs || [];
         node.numberOfInputs = node.inputs.length;
         node.numberOfOutputs = node.outputs.length;
-        ;
+        do { if (!(node.numberOfInputs + node.numberOfOutputs > 0)) { console.error("graphnode.js" + '[' + 37 + ']:\tASSERT failed (' + "node.numberOfInputs + node.numberOfOutputs > 0" + ') '); debugger; } } while (false);
         node.context = (node.inputs[0] && node.inputs[0].context) || (node.outputs[0] && node.outputs[0].context);
-        ;
+        do { if (!(node.context)) { console.error("graphnode.js" + '[' + 41 + ']:\tASSERT failed (' + "node.context" + ') '); debugger; } } while (false);
         node.connect = function (target, outIx, inIx) {
             var i, N, inPin, outPin;
             target = target || node.context.destination;
@@ -184,7 +184,7 @@ Param.expose = function (obj1, obj2, listOfParamNames) {
         listOfParamNames = Param.names(obj1);
     }
     listOfParamNames.forEach(function (n) {
-        ;
+        do { if (n in obj2) { console.warning("param.js" + '[' + 150 + ']:\tWARNING!\t' + "n in obj2"); } } while (false);
         obj2[n] = obj1[n];
     });
     return Param;
@@ -265,7 +265,7 @@ Param.prototype.changed = function () {
 
 
 Param.prototype.alias = function (name, label) {
-    ;
+    do { if (!(name)) { console.error("param.js" + '[' + 266 + ']:\tASSERT failed (' + "name" + ') ', "Param.alias call needs name as first argument."); debugger; } } while (false);
 
 
     var self = this;
@@ -458,7 +458,7 @@ function PeriodicTimer(callback, precision_ms) {
         }
         return running;
     });
-    ;
+    do { if (precision_ms <= 5) { console.warning("periodictimer.js" + '[' + 93 + ']:\tWARNING!\t' + "precision_ms <= 5"); } } while (false);
     self.computeAheadInterval_secs = (Math.round(precision_ms * 3.333)) / 1000;
     return self;
 }
@@ -841,7 +841,7 @@ function Scheduler(audioContext, options) {
         function track_iter(sched, clock, next, startIndex, endIndex) {
             var i = 0, i_end = models.length;
             if (arguments.length > 3) {
-                ;
+                do { if (!(arguments.length === 5)) { console.error("scheduler.js" + '[' + 581 + ']:\tASSERT failed (' + "arguments.length === 5" + ') '); debugger; } } while (false);
                 i = startIndex;
                 i_end = endIndex;
             }
@@ -872,7 +872,7 @@ function Scheduler(audioContext, options) {
         fire = function (callback) {
             return function (sched, clock, next) {
                 var t = time_secs();
-                ;
+                do { if (clock.t1 < t) { console.warning("scheduler.js" + '[' + 634 + ']:\tWARNING!\t' + "clock.t1 < t"); } } while (false);
                 callback(clock);
                 next(sched, clock, stop);
             };
@@ -1359,7 +1359,7 @@ function getHighResPerfTimeFunc() {
     }(getRequestAnimationFrameFunc()));
     steller.AudioContext = getAudioContext();
 }((function () { return typeof(window) === 'undefined' ? undefined : window; }()), org.anclab.steller));
-;
+do { if (!(org.anclab.steller)) { console.error("models.js" + '[' + 20 + ']:\tASSERT failed (' + "org.anclab.steller" + ') '); debugger; } } while (false);
 org.anclab.steller.Util.augment('Models',
 function (sh) {
     var steller = org.anclab.steller;
@@ -1481,7 +1481,7 @@ models.mic = (function () {
     }
     function setupMic(micModel, stream) {
         if (!micSource) {
-            ;
+            do { if (!(stream)) { console.error("models/mic.js" + '[' + 46 + ']:\tASSERT failed (' + "stream" + ') '); debugger; } } while (false);
             micSource = AC.createMediaStreamSource(stream);
         }
         micSource.connect(micModel.outputs[0]);
@@ -1561,7 +1561,7 @@ models.spectrum = function (N, smoothingFactor) {
             xhr.open('GET', url, true);
             xhr.responseType = 'arraybuffer';
             xhr.onerror = function (e) {
-                ;
+                do { console.error("models/sample.js" + '[' + 22 + ']:\t',e); } while (0);
                 if (errback) {
                     errback(e, url);
                 }
@@ -1573,7 +1573,7 @@ models.spectrum = function (N, smoothingFactor) {
                             do { if (0 <= LOG_LEVEL) { console.log("models/sample.js" + '[' + 31 + ']:\t', "Sound [" + url + "] loaded!"); } } while (false);
                         },
                         function (err) {
-                            ;
+                            do { console.error("models/sample.js" + '[' + 34 + ']:\t',"Sound [" + url + "] failed to decode."); } while (0);
                             if (errback) {
                                 errback(err, url);
                             }
@@ -1611,7 +1611,7 @@ models.spectrum = function (N, smoothingFactor) {
             }
         };
         function trigger(clock, rate, velocity, sampleOffset, sampleDuration) {
-            ;
+            do { if (!(soundBuff)) { console.error("models/sample.js" + '[' + 109 + ']:\tASSERT failed (' + "soundBuff" + ') '); debugger; } } while (false);
             var source = AC.createBufferSource();
             source.buffer = soundBuff;
             source.connect(level);
@@ -1674,7 +1674,7 @@ models.jsnode = function (spec) {
     var numberOfOutputs = spec.numberOfOutputs || 1;
     var numInputs = numberOfInputs + numParams;
     var numOutputs = numberOfOutputs;
-    ;
+    do { if (!(numOutputs > 0)) { console.error("models/jsnode.js" + '[' + 54 + ']:\tASSERT failed (' + "numOutputs > 0" + ') '); debugger; } } while (false);
     var merger = numInputs > 0 ? AC.createChannelMerger(numInputs) : undefined;
     var splitter = numOutputs > 0 ? AC.createChannelSplitter(numOutputs) : undefined;
     var inputNodes = [];
@@ -1695,9 +1695,9 @@ models.jsnode = function (spec) {
     var paramNames;
     if (spec.audioParams) {
         paramNames = Object.keys(spec.audioParams);
-        ;
-        ;
-        ;
+        do { if (!(!('inputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 76 + ']:\tASSERT failed (' + "!('inputs' in spec.audioParams)" + ') '); debugger; } } while (false);
+        do { if (!(!('outputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 77 + ']:\tASSERT failed (' + "!('outputs' in spec.audioParams)" + ') '); debugger; } } while (false);
+        do { if (!(!('playbackTime' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 78 + ']:\tASSERT failed (' + "!('playbackTime' in spec.audioParams)" + ') '); debugger; } } while (false);
     } else {
         paramNames = [];
     }
@@ -1750,7 +1750,7 @@ models.jsnode = function (spec) {
         sm[pn] = node.gain;
         node.gain.value = spec.audioParams[pn];
         dc.connect(node);
-        ;
+        do { if (!(!(paramNames[i] in obj))) { console.error("models/jsnode.js" + '[' + 159 + ']:\tASSERT failed (' + "!(paramNames[i] in obj)" + ') ', "Duplicate param name - ", paramNames[i]); debugger; } } while (false);
     });
     var kBufferSize = 1024;
     var jsn = sm.keep(AC.createJavaScriptNode(kBufferSize, numInputs, Math.min(1, numOutputs)));
