@@ -40,7 +40,10 @@
 //          // of the output buffer passed, it is taken as a signal
 //          // to end the jsnode and cleanup. This can also be used
 //          // to finish stuff like a reverb tail before killing 
-//          // the node.
+//          // the node. `event.samplesToStop` gives the number of
+//          // samples to generate before the indicated stop time
+//          // arrives. This information can be used to determine
+//          // tail characteristics too.
 //          return event.outputs[0].length;
 //      }
 // });
@@ -60,6 +63,8 @@ models.jsnode = function (spec) {
     var numInputs = numberOfInputs + numParams;
     var numOutputs = numberOfOutputs;
 
+    ASSERT(numberOfInputs >= 0);
+    ASSERT(numberOfOutputs >= 0);
     ASSERT(numOutputs > 0);
 
     var merger = numInputs > 0 ? AC.createChannelMerger(numInputs) : undefined;
@@ -102,12 +107,11 @@ models.jsnode = function (spec) {
     }
     obj.playbackTime = AC.currentTime;
 
-    var isSourceNode = (numberOfInputs === 0);
     var hasStarted = false, hasFinished = false, startTime = 0, stopTime = Infinity;
     var autoDestroy;
 
     var onaudioprocess = function (event) {
-        var i, N, t, t1, t2, samplesProcessed = 0;
+        var i, N, t, t1, t2, samplesOutput = 0;
 
         if (hasFinished) {
             return;
@@ -115,14 +119,9 @@ models.jsnode = function (spec) {
 
         var bufferLength = event.outputBuffer.length;
 
-        if (isSourceNode) {
-            t = Math.floor(AC.currentTime * AC.sampleRate);
-            t1 = Math.max(t, startTime);
-            t2 = Math.min(t + bufferLength, stopTime);
-        } else {
-            t1 = t;
-            t2 = t + bufferLength;
-        }
+        t = Math.floor(AC.currentTime * AC.sampleRate);
+        t1 = Math.max(t, startTime);
+        t2 = t + bufferLength;
 
         var dt1 = t1 - t;
         var dt2 = t2 - t;
@@ -141,19 +140,31 @@ models.jsnode = function (spec) {
             }
 
             obj.playbackTime = (event.playbackTime || AC.currentTime) + dt1 / AC.sampleRate;
+            obj.samplesToStop = stopTime - t1; 
+                // samplesToStop gives number of samples of output remaining
+                // before the node is expected to "stop". The node can,
+                // however continue beyond the stop time by generating
+                // more samples. It will be actually stopped only when it
+                // generates fewer samples than requested, which is checked
+                // using the return value. During "tail time", samplesToStop
+                // will be negative.
 
             // Call the handler. We bypass the event object entirely since
             // there is nothing in there now that isn't present in `obj`.
             // The onaudioprocess can return the number of samples processed,
             // which is used to decide whether to continue processing the
-            // sound or terminate it.
-            samplesProcessed = spec.onaudioprocess.call(sm, obj);
-            if (samplesProcessed === undefined) {
-                samplesProcessed = event.outputBuffer.length;
+            // sound or terminate it. If fewer samples are generated than
+            // requested, then the node is stopped. This allows for some
+            // tail time to follow a stoppage.
+            samplesOutput = spec.onaudioprocess.call(sm, obj);
+            if (samplesOutput === undefined) {
+                // If the callback doesn't have a return statement,
+                // then assume that it generates a whole buffer's worth.
+                samplesOutput = t2 - t1;
             }
         } 
 
-        if ((t1 + samplesProcessed < t2) || (isSourceNode && t2 >= stopTime)) {
+        if (t1 + samplesOutput < t2) {
             LOG(1, "Finished", t2, stopTime);
             hasFinished = true;
             setTimeout(autoDestroy, Math.round(bufferLength * 1000 / AC.sampleRate));
@@ -181,33 +192,31 @@ models.jsnode = function (spec) {
     });
 
     var kBufferLength = spec.bufferLength || 512;
-    var jsn = sm.keep(AC.createJavaScriptNode(kBufferLength, numInputs, Math.min(1, numOutputs)));
+    var jsn = sm.keep(AC.createScriptProcessor(kBufferLength, numInputs, Math.min(1, numOutputs)));
     merger && merger.connect(jsn); 
     jsn.onaudioprocess = onaudioprocess;
     var jsnDestination = splitter || AC.destination;
 
+    // Takes the JSN out of the graph.
+    autoDestroy = function () {
+        hasFinished = true;
+        jsn.disconnect();
+        splitter && splitter.disconnect();
+        dc && (dc.stop(0), dc.disconnect());
+        merger && merger.disconnect();
+        sm.drop(jsn);
+        sm.emit && sm.emit('finished'); // Indicate that it's all over.
+    };
+    
+    var startTimer;
+
     // Add start/stop methods depending on whether the node has any inputs
     // or not - i.e. on whether it is a "source node".
+    sm.prepareAheadTime = 0.1; // seconds.
+
     if (numberOfInputs === 0) {
-        var startTimer;
-
-        // Takes the JSN out of the graph.
-        autoDestroy = function () {
-            hasFinished = true;
-            jsn.disconnect();
-            splitter && splitter.disconnect();
-            dc && (dc.stop(0), dc.disconnect());
-            merger && merger.disconnect();
-            sm.drop(jsn);
-            if (sm.emit) {
-                sm.emit('stop');
-            }
-        };
-
-        isSourceNode = true;
-        sm.prepareAheadTime = 0.1; // seconds.
-
-        // This is a source node. Need start/stop methods.
+        // For source nodes (i.e. numberOfInputs === 0), start(t)
+        // needs to be called to indicate when to begin generating audio.
         sm.start = function (t) {
             if (hasStarted || hasFinished) {
                 // Same constraints as other nodes.
@@ -237,32 +246,34 @@ models.jsnode = function (spec) {
                 }
             } else {
                 // Schedule immediately.
+                hasStarted = true;
                 jsn.connect(jsnDestination);
             }
         };
-
-        sm.stop = function (t) {
-            // A start has been scheduled or already running.
-            if (hasFinished) {
-                // Nothing to do.
-                return;
-            }
-
-            stopTime = Math.max(startTime, Math.ceil(t * AC.sampleRate));
-
-            var dt = (t - AC.currentTime);
-
-            if (dt <= 0) {
-                LOG(4, "Stopping immediately.");
-                setTimeout(autoDestroy, 0);
-            }
-        };
     } else {
-        // Normal input/output node.
-        // We don't give such nodes the start/stop methods.
-        jsn.connect(jsnDestination);
+        sm.start = undefined;
     }
+    
+    // All jsnodes know how to stop. This is necessary for garbage collection.
+    // Even filter nodes need to know when to stop based on when source nodes
+    // that drive it are stopped.
+    sm.stop = function (t) {
+        // A start has been scheduled or already running.
+        if (hasFinished) {
+            // Nothing to do.
+            return;
+        }
 
+        stopTime = Math.max(startTime, Math.ceil(t * AC.sampleRate));
+    };
+
+    if (numberOfInputs > 0) {
+        // Not a source node.
+        // Cannot assume that start will be called.
+        // Need to call it right away.
+        sm.start(0);
+    }
+    
     return sm;
 };
 
