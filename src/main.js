@@ -51,9 +51,7 @@
 // [Steller] realizes the important aspects of sound models mentioned above using
 // the `GraphNode` object transformer and `Param` objects. `GraphNode` can impart
 // node-like behaviour to an object. `Param` objects can be animated, watched and shared.
-// Therefore a "base" sound model is simply `GraphNode`.
-// 
-//     var SoundModel = GraphNode;
+// Therefore a "base" sound model is an `Eventable GraphNode`.
 // 
 // We also need the ability to schedule these sounds. This facility is needed both
 // for internal use by sound models as well as for the sound model user. This
@@ -144,6 +142,7 @@ org.anclab.steller = org.anclab.steller || {};
 
 (function (window, steller) {
 
+#include "eventable.js"
 #include "graphnode.js"
 #include "param.js"
 #include "scheduler.js"
@@ -154,6 +153,9 @@ org.anclab.steller = org.anclab.steller || {};
     // ## SoundModel
     //
     // A "sound model" is a graph node with support for parameters.
+    // It is also "eventable" in that you can install watchers
+    // for events that are "emit"ed, perhaps by internal
+    // processes (see Eventable).
     //
     // `obj` is the object to turn into a "sound model"
     // 
@@ -169,10 +171,21 @@ org.anclab.steller = org.anclab.steller || {};
     //
     // Sound models are scheduled using the Scheduler (org.anclab.steller.Scheduler)
     //
-    var SoundModel = GraphNode;
+    function SoundModel(obj, inputs, outputs) {
+        var node = Eventable(GraphNode(obj, inputs, outputs));
+        
+        // Patch connect/disconnect methods to emit events
+        // after the action is complete, so that other things
+        // such as UI, cleanup, whatever can react to them.
+        Eventable.observe(node, 'connect');
+        Eventable.observe(node, 'disconnect');
 
-    steller.SoundModel    = SoundModel;
+        return node;
+    }
+
+    steller.Eventable     = Eventable;
     steller.GraphNode     = GraphNode;
+    steller.SoundModel    = SoundModel;
     steller.Param         = Param;
     steller.Scheduler     = Scheduler;
     steller.Clock         = Clock;
@@ -184,7 +197,8 @@ org.anclab.steller = org.anclab.steller || {};
     // Expose the ones that we use.
     steller.requestAnimationFrame = (function (raf) {
         return function (func) {
-            return raf(func);
+            return raf(func);   // This is so that steller.requestAnimationFrame
+                                // can be called with anything as "this".
         };
     }(getRequestAnimationFrameFunc()));
     steller.AudioContext = getAudioContext();
