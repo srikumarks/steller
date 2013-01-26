@@ -178,6 +178,9 @@ models.jsnode = function (spec) {
             dc && (dc.stop(0), dc.disconnect());
             merger && merger.disconnect();
             sm.drop(jsn);
+            if (sm.emit) {
+                sm.emit('stop');
+            }
         };
 
         isSourceNode = true;
