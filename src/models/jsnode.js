@@ -18,6 +18,7 @@
 // var jsn = models.jsnode({
 //      numberOfInputs: 4,
 //      numberOfOutputs: 5,
+//      bufferLength: 512,
 //      audioParams: {
 //          gain: 1,
 //          pitch: 1.5,
@@ -106,19 +107,25 @@ models.jsnode = function (spec) {
     var autoDestroy;
 
     var onaudioprocess = function (event) {
-        var i, N, t, t1, t2, dt1, dt2, samplesProcessed = 0;
+        var i, N, t, t1, t2, samplesProcessed = 0;
+
+        if (hasFinished) {
+            return;
+        }
+
+        var bufferLength = event.outputBuffer.length;
 
         if (isSourceNode) {
             t = Math.floor(AC.currentTime * AC.sampleRate);
             t1 = Math.max(t, startTime);
-            t2 = Math.min(t + kBufferSize, stopTime);
+            t2 = Math.min(t + bufferLength, stopTime);
         } else {
             t1 = t;
-            t2 = t + kBufferSize;
+            t2 = t + bufferLength;
         }
 
-        dt1 = t1 - t;
-        dt2 = t2 - t;
+        var dt1 = t1 - t;
+        var dt2 = t2 - t;
 
         if (t2 > t1) {
             // Prepare the buffers for access by the nested onaudioprocess handler.
@@ -146,10 +153,10 @@ models.jsnode = function (spec) {
             }
         } 
 
-        if (!hasFinished && ((t1 + samplesProcessed < t2) || (isSourceNode && t2 >= stopTime))) {
+        if ((t1 + samplesProcessed < t2) || (isSourceNode && t2 >= stopTime)) {
             LOG(1, "Finished", t2, stopTime);
             hasFinished = true;
-            setTimeout(autoDestroy, Math.round(kBufferSize * 1000 / AC.sampleRate));
+            setTimeout(autoDestroy, Math.round(bufferLength * 1000 / AC.sampleRate));
         }
     };
 
@@ -173,8 +180,8 @@ models.jsnode = function (spec) {
         ASSERT(!(paramNames[i] in obj), "Duplicate param name - ", paramNames[i]);
     });
 
-    var kBufferSize = 1024;
-    var jsn = sm.keep(AC.createJavaScriptNode(kBufferSize, numInputs, Math.min(1, numOutputs)));
+    var kBufferLength = spec.bufferLength || 512;
+    var jsn = sm.keep(AC.createJavaScriptNode(kBufferLength, numInputs, Math.min(1, numOutputs)));
     merger && merger.connect(jsn); 
     jsn.onaudioprocess = onaudioprocess;
     var jsnDestination = splitter || AC.destination;
