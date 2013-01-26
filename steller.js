@@ -3,6 +3,88 @@ org = typeof(org) === 'undefined' ? {} : org;
 org.anclab = org.anclab || {};
 org.anclab.steller = org.anclab.steller || {};
 (function (window, steller) {
+
+function Eventable(obj) {
+    var watchers = {};
+    function on(eventName, watcher) {
+        var i, N;
+        if (arguments.length > 2) {
+            for (i = 1, N = arguments.length; i < N; ++i) {
+                this.on(eventName, arguments[i]);
+            }
+            return this;
+        }
+        var eventWatchers = watchers[eventName] || (watchers[eventName] = []);
+        for (i = 0, N = eventWatchers.length; i < N; ++i) {
+            if (eventWatchers[i] === watcher) {
+                return this;
+            }
+        }
+        eventWatchers.push(watcher);
+        return this;
+    }
+    function off(eventName, watcher) {
+        var i, N;
+        if (arguments.length > 2) {
+            for (i = 1, N = arguments.length; i < N; ++i) {
+                this.off(eventName, arguments[i]);
+            }
+            return this;
+        }
+        var eventWatchers = watchers[eventName];
+        if (!eventWatchers) {
+            return this;
+        }
+        if (watcher) {
+            for (i = 0, N = eventWatchers.length; i < N; ++i) {
+                if (eventWatchers[i] === watcher) {
+                    eventWatchers.splice(i, 1);
+                    return this;
+                }
+            }
+            do { if (true) { console.warning("eventable.js" + '[' + 68 + ']:\tWARNING!\t' + "true"); } } while (false);
+            return this;
+        }
+        delete watchers[eventName];
+        return this;
+    }
+    function emit(eventName) {
+        var eventWatchers = watchers[eventName];
+        if (!eventWatchers) {
+            return this;
+        }
+        var i, N;
+        for (i = 0, N = eventWatchers.length; i < N; ++i) {
+            try {
+                eventWatchers[i].apply(this, arguments);
+            } catch (e) {
+                do { if (1 <= LOG_LEVEL) { console.log("eventable.js" + '[' + 92 + ']:\t', "Exception in event watcher - ", e); } } while (false);
+            }
+        }
+        return this;
+    }
+    do { if (!(!('on' in obj))) { console.error("eventable.js" + '[' + 99 + ']:\tASSERT failed (' + "!('on' in obj)" + ') '); debugger; } } while (false);
+    do { if (!(!('off' in obj))) { console.error("eventable.js" + '[' + 100 + ']:\tASSERT failed (' + "!('off' in obj)" + ') '); debugger; } } while (false);
+    do { if (!(!('emit' in obj))) { console.error("eventable.js" + '[' + 101 + ']:\tASSERT failed (' + "!('emit' in obj)" + ') '); debugger; } } while (false);
+    obj.on = on;
+    obj.off = off;
+    obj.emit = emit;
+    return obj;
+}
+Eventable.observe = function (obj, methodName, eventName) {
+    do { if (!(obj.emit)) { debugger; throw new Error("eventable.js" + '[' + 113 + ']:\t' + "obj.emit"); } } while (false);
+    eventName = eventName || methodName;
+    var method = obj[methodName];
+    do { if (!(typeof(method) === 'function')) { debugger; throw new Error("eventable.js" + '[' + 118 + ']:\t' + "typeof(method) === 'function'"); } } while (false);
+    obj[methodName] = function () {
+        var result = method.apply(this, arguments);
+        var argv = Array.prototype.slice.call(arguments);
+        argv.unshift(eventName);
+        this.emit.apply(this, argv);
+        return result;
+    };
+    return obj;
+};
 var GraphNode = (function () {
     function GraphNode(node, inputs, outputs) {
         node.inputs = inputs || [];
@@ -252,39 +334,22 @@ Param.prototype.unwatch = function (callback) {
     }
     return this;
 };
-
-
 Param.prototype.changed = function () {
     observeParam(this, this.getter());
     return this;
 };
-
-
-
-
-
-
 Param.prototype.alias = function (name, label) {
     do { if (!(name)) { console.error("param.js" + '[' + 266 + ']:\tASSERT failed (' + "name" + ') ', "Param.alias call needs name as first argument."); debugger; } } while (false);
-
-
     var self = this;
-
-
     var p = Object.create(self);
-
-
     p.spec = Object.create(self.spec);
     p.spec.name = name;
     if (label) {
         p.spec.label = label;
     }
-
-
     p.getter = function () { return self.getter(); };
     p.setter = function (val) { return self.setter(val); };
     p.alias = function (name, label) { return self.alias(name, label); };
-
     return p;
 };
 Param.prototype.bind = function (elem, sh) {
@@ -1342,9 +1407,15 @@ function getHighResPerfTimeFunc() {
     }
     return undefined;
 }
-    var SoundModel = GraphNode;
-    steller.SoundModel = SoundModel;
+    function SoundModel(obj, inputs, outputs) {
+        var node = Eventable(GraphNode(obj, inputs, outputs));
+        Eventable.observe(node, 'connect');
+        Eventable.observe(node, 'disconnect');
+        return node;
+    }
+    steller.Eventable = Eventable;
     steller.GraphNode = GraphNode;
+    steller.SoundModel = SoundModel;
     steller.Param = Param;
     steller.Scheduler = Scheduler;
     steller.Clock = Clock;
@@ -1674,7 +1745,7 @@ models.jsnode = function (spec) {
     var numberOfOutputs = spec.numberOfOutputs || 1;
     var numInputs = numberOfInputs + numParams;
     var numOutputs = numberOfOutputs;
-    do { if (!(numOutputs > 0)) { console.error("models/jsnode.js" + '[' + 54 + ']:\tASSERT failed (' + "numOutputs > 0" + ') '); debugger; } } while (false);
+    do { if (!(numOutputs > 0)) { console.error("models/jsnode.js" + '[' + 62 + ']:\tASSERT failed (' + "numOutputs > 0" + ') '); debugger; } } while (false);
     var merger = numInputs > 0 ? AC.createChannelMerger(numInputs) : undefined;
     var splitter = numOutputs > 0 ? AC.createChannelSplitter(numOutputs) : undefined;
     var inputNodes = [];
@@ -1695,9 +1766,9 @@ models.jsnode = function (spec) {
     var paramNames;
     if (spec.audioParams) {
         paramNames = Object.keys(spec.audioParams);
-        do { if (!(!('inputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 76 + ']:\tASSERT failed (' + "!('inputs' in spec.audioParams)" + ') '); debugger; } } while (false);
-        do { if (!(!('outputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 77 + ']:\tASSERT failed (' + "!('outputs' in spec.audioParams)" + ') '); debugger; } } while (false);
-        do { if (!(!('playbackTime' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 78 + ']:\tASSERT failed (' + "!('playbackTime' in spec.audioParams)" + ') '); debugger; } } while (false);
+        do { if (!(!('inputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 84 + ']:\tASSERT failed (' + "!('inputs' in spec.audioParams)" + ') '); debugger; } } while (false);
+        do { if (!(!('outputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 85 + ']:\tASSERT failed (' + "!('outputs' in spec.audioParams)" + ') '); debugger; } } while (false);
+        do { if (!(!('playbackTime' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 86 + ']:\tASSERT failed (' + "!('playbackTime' in spec.audioParams)" + ') '); debugger; } } while (false);
     } else {
         paramNames = [];
     }
@@ -1713,7 +1784,7 @@ models.jsnode = function (spec) {
     var hasStarted = false, hasFinished = false, startTime = 0, stopTime = Infinity;
     var autoDestroy;
     var onaudioprocess = function (event) {
-        var i, N, t, t1, t2, dt1, dt2;
+        var i, N, t, t1, t2, dt1, dt2, samplesProcessed = 0;
         if (isSourceNode) {
             t = Math.floor(AC.currentTime * AC.sampleRate);
             t1 = Math.max(t, startTime);
@@ -1734,11 +1805,14 @@ models.jsnode = function (spec) {
             for (i = 0, N = paramNames.length; i < N; ++i) {
                 obj[paramNames[i]] = event.inputBuffer.getChannelData(numberOfInputs + i).subarray(dt1, dt2);
             }
-            obj.playbackTime = event.playbackTime || AC.currentTime;
-            spec.onaudioprocess.call(sm, obj);
+            obj.playbackTime = (event.playbackTime || AC.currentTime) + dt1 / AC.sampleRate;
+            samplesProcessed = spec.onaudioprocess.call(sm, obj);
+            if (samplesProcessed === undefined) {
+                samplesProcessed = event.outputBuffer.length;
+            }
         }
-        if (isSourceNode && !hasFinished && t2 >= stopTime) {
-            do { if (1 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 136 + ']:\t', "Finished", t2, stopTime); } } while (false);
+        if (!hasFinished && ((t1 + samplesProcessed < t2) || (isSourceNode && t2 >= stopTime))) {
+            do { if (1 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 150 + ']:\t', "Finished", t2, stopTime); } } while (false);
             hasFinished = true;
             setTimeout(autoDestroy, Math.round(kBufferSize * 1000 / AC.sampleRate));
         }
@@ -1750,7 +1824,7 @@ models.jsnode = function (spec) {
         sm[pn] = node.gain;
         node.gain.value = spec.audioParams[pn];
         dc.connect(node);
-        do { if (!(!(paramNames[i] in obj))) { console.error("models/jsnode.js" + '[' + 159 + ']:\tASSERT failed (' + "!(paramNames[i] in obj)" + ') ', "Duplicate param name - ", paramNames[i]); debugger; } } while (false);
+        do { if (!(!(paramNames[i] in obj))) { console.error("models/jsnode.js" + '[' + 173 + ']:\tASSERT failed (' + "!(paramNames[i] in obj)" + ') ', "Duplicate param name - ", paramNames[i]); debugger; } } while (false);
     });
     var kBufferSize = 1024;
     var jsn = sm.keep(AC.createJavaScriptNode(kBufferSize, numInputs, Math.min(1, numOutputs)));
@@ -1763,9 +1837,12 @@ models.jsnode = function (spec) {
             hasFinished = true;
             jsn.disconnect();
             splitter && splitter.disconnect();
-            dc && (dc.stop(), dc.disconnect());
+            dc && (dc.stop(0), dc.disconnect());
             merger && merger.disconnect();
             sm.drop(jsn);
+            if (sm.emit) {
+                sm.emit('stop');
+            }
         };
         isSourceNode = true;
         sm.prepareAheadTime = 0.1;
@@ -1801,7 +1878,7 @@ models.jsnode = function (spec) {
             stopTime = Math.max(startTime, Math.ceil(t * AC.sampleRate));
             var dt = (t - AC.currentTime);
             if (dt <= 0) {
-                do { if (4 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 232 + ']:\t', "Stopping immediately."); } } while (false);
+                do { if (4 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 249 + ']:\t', "Stopping immediately."); } } while (false);
                 setTimeout(autoDestroy, 0);
             }
         };
