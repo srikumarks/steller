@@ -125,7 +125,7 @@ models.jsnode = function (spec) {
                 obj[paramNames[i]] = event.inputBuffer.getChannelData(numberOfInputs + i).subarray(dt1, dt2);
             }
 
-            obj.playbackTime = event.playbackTime || AC.currentTime;
+            obj.playbackTime = (event.playbackTime || AC.currentTime) + dt1 / AC.sampleRate;
 
             // Call the handler. We bypass the event object entirely since
             // there is nothing in there now that isn't present in `obj`.
@@ -175,7 +175,7 @@ models.jsnode = function (spec) {
             hasFinished = true;
             jsn.disconnect();
             splitter && splitter.disconnect();
-            dc && (dc.stop(), dc.disconnect());
+            dc && (dc.stop(0), dc.disconnect());
             merger && merger.disconnect();
             sm.drop(jsn);
         };
