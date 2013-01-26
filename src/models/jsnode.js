@@ -33,6 +33,14 @@
 //          //
 //          // 'this' will refer to the jsn model object within this
 //          // handler. So you can access other model parameters and methods.
+//
+//          // Return the number of samples processed. If you 
+//          // return any value that is less than the length
+//          // of the output buffer passed, it is taken as a signal
+//          // to end the jsnode and cleanup. This can also be used
+//          // to finish stuff like a reverb tail before killing 
+//          // the node.
+//          return event.outputs[0].length;
 //      }
 // });
 //
@@ -98,7 +106,7 @@ models.jsnode = function (spec) {
     var autoDestroy;
 
     var onaudioprocess = function (event) {
-        var i, N, t, t1, t2, dt1, dt2;
+        var i, N, t, t1, t2, dt1, dt2, samplesProcessed = 0;
 
         if (isSourceNode) {
             t = Math.floor(AC.currentTime * AC.sampleRate);
@@ -129,10 +137,16 @@ models.jsnode = function (spec) {
 
             // Call the handler. We bypass the event object entirely since
             // there is nothing in there now that isn't present in `obj`.
-            spec.onaudioprocess.call(sm, obj);
+            // The onaudioprocess can return the number of samples processed,
+            // which is used to decide whether to continue processing the
+            // sound or terminate it.
+            samplesProcessed = spec.onaudioprocess.call(sm, obj);
+            if (samplesProcessed === undefined) {
+                samplesProcessed = event.outputBuffer.length;
+            }
         } 
 
-        if (isSourceNode && !hasFinished && t2 >= stopTime) {
+        if (!hasFinished && ((t1 + samplesProcessed < t2) || (isSourceNode && t2 >= stopTime))) {
             LOG(1, "Finished", t2, stopTime);
             hasFinished = true;
             setTimeout(autoDestroy, Math.round(kBufferSize * 1000 / AC.sampleRate));
