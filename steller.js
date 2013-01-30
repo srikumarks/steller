@@ -1745,7 +1745,9 @@ models.jsnode = function (spec) {
     var numberOfOutputs = spec.numberOfOutputs || 1;
     var numInputs = numberOfInputs + numParams;
     var numOutputs = numberOfOutputs;
-    do { if (!(numOutputs > 0)) { console.error("models/jsnode.js" + '[' + 62 + ']:\tASSERT failed (' + "numOutputs > 0" + ') '); debugger; } } while (false);
+    do { if (!(numberOfInputs >= 0)) { console.error("models/jsnode.js" + '[' + 66 + ']:\tASSERT failed (' + "numberOfInputs >= 0" + ') '); debugger; } } while (false);
+    do { if (!(numberOfOutputs >= 0)) { console.error("models/jsnode.js" + '[' + 67 + ']:\tASSERT failed (' + "numberOfOutputs >= 0" + ') '); debugger; } } while (false);
+    do { if (!(numOutputs > 0)) { console.error("models/jsnode.js" + '[' + 68 + ']:\tASSERT failed (' + "numOutputs > 0" + ') '); debugger; } } while (false);
     var merger = numInputs > 0 ? AC.createChannelMerger(numInputs) : undefined;
     var splitter = numOutputs > 0 ? AC.createChannelSplitter(numOutputs) : undefined;
     var inputNodes = [];
@@ -1766,9 +1768,9 @@ models.jsnode = function (spec) {
     var paramNames;
     if (spec.audioParams) {
         paramNames = Object.keys(spec.audioParams);
-        do { if (!(!('inputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 84 + ']:\tASSERT failed (' + "!('inputs' in spec.audioParams)" + ') '); debugger; } } while (false);
-        do { if (!(!('outputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 85 + ']:\tASSERT failed (' + "!('outputs' in spec.audioParams)" + ') '); debugger; } } while (false);
-        do { if (!(!('playbackTime' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 86 + ']:\tASSERT failed (' + "!('playbackTime' in spec.audioParams)" + ') '); debugger; } } while (false);
+        do { if (!(!('inputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 90 + ']:\tASSERT failed (' + "!('inputs' in spec.audioParams)" + ') '); debugger; } } while (false);
+        do { if (!(!('outputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 91 + ']:\tASSERT failed (' + "!('outputs' in spec.audioParams)" + ') '); debugger; } } while (false);
+        do { if (!(!('playbackTime' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 92 + ']:\tASSERT failed (' + "!('playbackTime' in spec.audioParams)" + ') '); debugger; } } while (false);
     } else {
         paramNames = [];
     }
@@ -1780,21 +1782,19 @@ models.jsnode = function (spec) {
         obj[paramNames[i]] = null;
     }
     obj.playbackTime = AC.currentTime;
-    var isSourceNode = (numberOfInputs === 0);
     var hasStarted = false, hasFinished = false, startTime = 0, stopTime = Infinity;
     var autoDestroy;
     var onaudioprocess = function (event) {
-        var i, N, t, t1, t2, dt1, dt2, samplesProcessed = 0;
-        if (isSourceNode) {
-            t = Math.floor(AC.currentTime * AC.sampleRate);
-            t1 = Math.max(t, startTime);
-            t2 = Math.min(t + kBufferSize, stopTime);
-        } else {
-            t1 = t;
-            t2 = t + kBufferSize;
+        var i, N, t, t1, t2, samplesOutput = 0;
+        if (hasFinished) {
+            return;
         }
-        dt1 = t1 - t;
-        dt2 = t2 - t;
+        var bufferLength = event.outputBuffer.length;
+        t = Math.floor(AC.currentTime * AC.sampleRate);
+        t1 = Math.max(t, startTime);
+        t2 = t + bufferLength;
+        var dt1 = t1 - t;
+        var dt2 = t2 - t;
         if (t2 > t1) {
             for (i = 0, N = numberOfInputs; i < N; ++i) {
                 inputs[i] = event.inputBuffer.getChannelData(i).subarray(dt1, dt2);
@@ -1806,15 +1806,16 @@ models.jsnode = function (spec) {
                 obj[paramNames[i]] = event.inputBuffer.getChannelData(numberOfInputs + i).subarray(dt1, dt2);
             }
             obj.playbackTime = (event.playbackTime || AC.currentTime) + dt1 / AC.sampleRate;
-            samplesProcessed = spec.onaudioprocess.call(sm, obj);
-            if (samplesProcessed === undefined) {
-                samplesProcessed = event.outputBuffer.length;
+            obj.samplesToStop = stopTime - t1;
+            samplesOutput = spec.onaudioprocess.call(sm, obj);
+            if (samplesOutput === undefined) {
+                samplesOutput = t2 - t1;
             }
         }
-        if (!hasFinished && ((t1 + samplesProcessed < t2) || (isSourceNode && t2 >= stopTime))) {
-            do { if (1 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 150 + ']:\t', "Finished", t2, stopTime); } } while (false);
+        if (t1 + samplesOutput < t2) {
+            do { if (1 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 168 + ']:\t', "Finished", t2, stopTime); } } while (false);
             hasFinished = true;
-            setTimeout(autoDestroy, Math.round(kBufferSize * 1000 / AC.sampleRate));
+            setTimeout(autoDestroy, Math.round(bufferLength * 1000 / AC.sampleRate));
         }
     };
     var sm = SoundModel({}, inputNodes, outputNodes);
@@ -1824,66 +1825,58 @@ models.jsnode = function (spec) {
         sm[pn] = node.gain;
         node.gain.value = spec.audioParams[pn];
         dc.connect(node);
-        do { if (!(!(paramNames[i] in obj))) { console.error("models/jsnode.js" + '[' + 173 + ']:\tASSERT failed (' + "!(paramNames[i] in obj)" + ') ', "Duplicate param name - ", paramNames[i]); debugger; } } while (false);
+        do { if (!(!(paramNames[i] in obj))) { console.error("models/jsnode.js" + '[' + 191 + ']:\tASSERT failed (' + "!(paramNames[i] in obj)" + ') ', "Duplicate param name - ", paramNames[i]); debugger; } } while (false);
     });
-    var kBufferSize = 1024;
-    var jsn = sm.keep(AC.createJavaScriptNode(kBufferSize, numInputs, Math.min(1, numOutputs)));
+    var kBufferLength = spec.bufferLength || 512;
+    var jsn = sm.keep(AC.createScriptProcessor(kBufferLength, numInputs, Math.min(1, numOutputs)));
     merger && merger.connect(jsn);
     jsn.onaudioprocess = onaudioprocess;
     var jsnDestination = splitter || AC.destination;
-    if (numberOfInputs === 0) {
-        var startTimer;
-        autoDestroy = function () {
-            hasFinished = true;
-            jsn.disconnect();
-            splitter && splitter.disconnect();
-            dc && (dc.stop(0), dc.disconnect());
-            merger && merger.disconnect();
-            sm.drop(jsn);
-            if (sm.emit) {
-                sm.emit('stop');
+    autoDestroy = function () {
+        hasFinished = true;
+        jsn.disconnect();
+        splitter && splitter.disconnect();
+        dc && (dc.stop(0), dc.disconnect());
+        merger && merger.disconnect();
+        sm.drop(jsn);
+        sm.emit && sm.emit('finished');
+    };
+    var startTimer;
+    sm.prepareAheadTime = 0.1;
+    sm.start = function (t) {
+        if (hasStarted || hasFinished) {
+            return;
+        }
+        if (t) {
+            var dt = (Math.max(t, AC.currentTime) - AC.currentTime);
+            if (startTimer) {
+                cancelTimeout(startTimer);
+                startTimer = null;
             }
-        };
-        isSourceNode = true;
-        sm.prepareAheadTime = 0.1;
-        sm.start = function (t) {
-            if (hasStarted || hasFinished) {
-                return;
-            }
-            if (t) {
-                var dt = (Math.max(t, AC.currentTime) - AC.currentTime);
-                if (startTimer) {
-                    cancelTimeout(startTimer);
-                    startTimer = null;
-                }
-                var starter = function (t) {
-                    startTime = Math.floor(t * AC.sampleRate);
-                    hasStarted = true;
-                    startTimer = null;
-                    jsn.connect(jsnDestination);
-                };
-                if (dt <= sm.prepareAheadTime) {
-                    starter(t);
-                } else {
-                    startTimer = setTimeout(starter, Math.round(1000 * (dt - sm.prepareAheadTime)), t);
-                }
-            } else {
+            var starter = function (t) {
+                startTime = Math.floor(t * AC.sampleRate);
+                hasStarted = true;
+                startTimer = null;
                 jsn.connect(jsnDestination);
+            };
+            if (dt <= sm.prepareAheadTime) {
+                starter(t);
+            } else {
+                startTimer = setTimeout(starter, Math.round(1000 * (dt - sm.prepareAheadTime)), t);
             }
-        };
-        sm.stop = function (t) {
-            if (hasFinished) {
-                return;
-            }
-            stopTime = Math.max(startTime, Math.ceil(t * AC.sampleRate));
-            var dt = (t - AC.currentTime);
-            if (dt <= 0) {
-                do { if (4 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 249 + ']:\t', "Stopping immediately."); } } while (false);
-                setTimeout(autoDestroy, 0);
-            }
-        };
-    } else {
-        jsn.connect(jsnDestination);
+        } else {
+            hasStarted = true;
+            jsn.connect(jsnDestination);
+        }
+    };
+    sm.stop = function (t) {
+        if (hasFinished) {
+            return;
+        }
+        stopTime = Math.max(startTime, Math.ceil(t * AC.sampleRate));
+    };
+    if (numberOfInputs > 0) {
+        sm.start(0);
     }
     return sm;
 };
