@@ -214,45 +214,43 @@ models.jsnode = function (spec) {
     // or not - i.e. on whether it is a "source node".
     sm.prepareAheadTime = 0.1; // seconds.
 
-    if (numberOfInputs === 0) {
-        // For source nodes (i.e. numberOfInputs === 0), start(t)
-        // needs to be called to indicate when to begin generating audio.
-        sm.start = function (t) {
-            if (hasStarted || hasFinished) {
-                // Same constraints as other nodes.
-                return;
+    // For source nodes (i.e. numberOfInputs === 0), start(t)
+    // needs to be called to indicate when to begin generating audio.
+    // This is needed even for processing nodes in order to avoid
+    // unnecessary computation before its inputs are ready.
+    sm.start = function (t) {
+        if (hasStarted || hasFinished) {
+            // Same constraints as other nodes.
+            return;
+        }
+
+        if (t) {
+            // Schedule for the future, maybe.
+            var dt = (Math.max(t, AC.currentTime) - AC.currentTime);
+
+            if (startTimer) {
+                cancelTimeout(startTimer);
+                startTimer = null;
             }
 
-            if (t) {
-                // Schedule for the future, maybe.
-                var dt = (Math.max(t, AC.currentTime) - AC.currentTime);
-
-                if (startTimer) {
-                    cancelTimeout(startTimer);
-                    startTimer = null;
-                }
-
-                var starter = function (t) {
-                    startTime = Math.floor(t * AC.sampleRate);
-                    hasStarted = true;
-                    startTimer = null;
-                    jsn.connect(jsnDestination);
-                };
-
-                if (dt <= sm.prepareAheadTime) {
-                    starter(t);
-                } else {
-                    startTimer = setTimeout(starter, Math.round(1000 * (dt - sm.prepareAheadTime)), t);
-                }
-            } else {
-                // Schedule immediately.
+            var starter = function (t) {
+                startTime = Math.floor(t * AC.sampleRate);
                 hasStarted = true;
+                startTimer = null;
                 jsn.connect(jsnDestination);
+            };
+
+            if (dt <= sm.prepareAheadTime) {
+                starter(t);
+            } else {
+                startTimer = setTimeout(starter, Math.round(1000 * (dt - sm.prepareAheadTime)), t);
             }
-        };
-    } else {
-        sm.start = undefined;
-    }
+        } else {
+            // Schedule immediately.
+            hasStarted = true;
+            jsn.connect(jsnDestination);
+        }
+    };
     
     // All jsnodes know how to stop. This is necessary for garbage collection.
     // Even filter nodes need to know when to stop based on when source nodes
