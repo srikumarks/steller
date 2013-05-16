@@ -3,6 +3,7 @@ var validEventName = (function () {
     var dummy = {};
 
     return function (eventName) {
+        ASSERT(typeof(eventName) == 'string');
         if (dummy[eventName]) {
             throw new Error('Invalid event name - ' + eventName);
         }
@@ -18,7 +19,7 @@ var nextEventableWatcherID = 1;
 function Eventable(obj) {
     var watchers = {};
 
-    // on(eventName, watcher1, watcher2, ...)
+    // on(eventName, watcher)
     //
     // Installs the given watchers (callbacks) for the specified
     // eventName. The watchers will all be called once the event 
@@ -26,23 +27,18 @@ function Eventable(obj) {
     // as the emit(..) call. The "this" context is set to `obj` inside
     // a watcher call.
     function on(eventName, watcher) {
+        ASSERT(arguments.length === 2);
+        ASSERT(typeof(watcher) === 'function');
+
         var i, N;
 
         eventName = validEventName(eventName);
 
-        if (arguments.length > 2) {
-            // Support on(eventName, watcher1, watcher2, ...)
-            for (i = 1, N = arguments.length; i < N; ++i) {
-                this.on(eventName, arguments[i]);
-            }
-            return this;
-        }
-        
         var eventWatchers = watchers[eventName] || (watchers[eventName] = {});
         
-        var id = (watcher && watcher['__steller_eventable_id__']) || 0;
+        var id = watcher['__steller_eventable_id__'] || 0;
 
-        if (id && (id in eventWatchers)) {
+        if (id in eventWatchers) {
             return this;
         }
 
@@ -59,23 +55,17 @@ function Eventable(obj) {
         return this;
     }
 
-    // off(eventName, watcher1, watcher2, ...)
+    // off(eventName, watcher)
     //
     // Removes given watchers from the watch list. If no
     // watchers are given, removes all watchers associated with
     // the given event.
     function off(eventName, watcher) {
+        ASSERT(arguments.length >= 1 && arguments.length <= 2);
+
         var i, N;
 
         eventName = validEventName(eventName);
-
-        if (arguments.length > 2) {
-            // Support off(eventName, watcher1, watcher2, ...)
-            for (i = 1, N = arguments.length; i < N; ++i) {
-                this.off(eventName, arguments[i]);
-            }
-            return this;
-        }
 
         var eventWatchers = watchers[eventName];
 
@@ -106,6 +96,7 @@ function Eventable(obj) {
 
         var eventWatchers = watchers[eventName];
         if (!eventWatchers) {
+            // Nothing to do.
             return this;
         }
 
@@ -163,12 +154,8 @@ function AsyncEventable(obj) {
 
     var on = obj.on;
     obj.on = function asyncOn(eventName, watcher) {
-        if (arguments.length > 2) {
-            for (var i = 1, N = arguments.length; i < N; ++i) {
-                asyncOn(eventName, arguments[i]);
-            }
-            return this;
-        }
+        ASSERT(arguments.length === 2);
+        ASSERT(typeof(watcher) === 'function');
 
         if (!watcher) {
             return this;
