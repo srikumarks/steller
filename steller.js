@@ -1,30 +1,52 @@
-var LOG_LEVEL = 4;
+var LOG_LEVEL = 1;
 org = typeof(org) === 'undefined' ? {} : org;
 org.anclab = org.anclab || {};
 org.anclab.steller = org.anclab.steller || {};
 (function (window, steller) {
+var validEventName = (function () {
+    var dummy = {};
+    return function (eventName) {
+        if (dummy[eventName]) {
+            throw new Error('Invalid event name - ' + eventName);
+        }
+        return eventName;
+    };
+}());
+var nextEventableWatcherID = 1;
+
+
+
 
 function Eventable(obj) {
     var watchers = {};
     function on(eventName, watcher) {
         var i, N;
+        eventName = validEventName(eventName);
         if (arguments.length > 2) {
             for (i = 1, N = arguments.length; i < N; ++i) {
                 this.on(eventName, arguments[i]);
             }
             return this;
         }
-        var eventWatchers = watchers[eventName] || (watchers[eventName] = []);
-        for (i = 0, N = eventWatchers.length; i < N; ++i) {
-            if (eventWatchers[i] === watcher) {
-                return this;
-            }
+        var eventWatchers = watchers[eventName] || (watchers[eventName] = {});
+        var id = (watcher && watcher['__steller_eventable_id__']) || 0;
+        if (id && (id in eventWatchers)) {
+            return this;
         }
-        eventWatchers.push(watcher);
+        if (!id) {
+            Object.defineProperty(watcher, '__steller_eventable_id__', {
+                value: (id = nextEventableWatcherID++),
+                enumerable: false,
+                configurable: false,
+                writable: false
+            });
+        }
+        eventWatchers[id] = watcher;
         return this;
     }
     function off(eventName, watcher) {
         var i, N;
+        eventName = validEventName(eventName);
         if (arguments.length > 2) {
             for (i = 1, N = arguments.length; i < N; ++i) {
                 this.off(eventName, arguments[i]);
@@ -35,47 +57,43 @@ function Eventable(obj) {
         if (!eventWatchers) {
             return this;
         }
-        if (watcher) {
-            for (i = 0, N = eventWatchers.length; i < N; ++i) {
-                if (eventWatchers[i] === watcher) {
-                    eventWatchers.splice(i, 1);
-                    return this;
-                }
-            }
-            do { if (true) { console.warning("eventable.js" + '[' + 68 + ']:\tWARNING!\t' + "true"); } } while (false);
-            return this;
+        var wid = (watcher && watcher['__steller_eventable_id__']) || 0;
+        if (wid) {
+            ;
+            delete eventWatchers[wid];
+        } else if (!watcher) {
+            delete watchers[eventName];
         }
-        delete watchers[eventName];
         return this;
     }
     function emit(eventName) {
+        eventName = validEventName(eventName);
         var eventWatchers = watchers[eventName];
         if (!eventWatchers) {
             return this;
         }
-        var i, N;
-        for (i = 0, N = eventWatchers.length; i < N; ++i) {
+        for (var id in eventWatchers) {
             try {
-                eventWatchers[i].apply(this, arguments);
+                eventWatchers[id].apply(this, arguments);
             } catch (e) {
-                do { if (1 <= LOG_LEVEL) { console.log("eventable.js" + '[' + 92 + ']:\t', "Exception in event watcher - ", e); } } while (false);
+                do { if (1 <= LOG_LEVEL) { console.log("eventable.js" + '[' + 116 + ']:\t', "Exception in event watcher - ", e); } } while (false);
             }
         }
         return this;
     }
-    do { if (!(!('on' in obj))) { console.error("eventable.js" + '[' + 99 + ']:\tASSERT failed (' + "!('on' in obj)" + ') '); debugger; } } while (false);
-    do { if (!(!('off' in obj))) { console.error("eventable.js" + '[' + 100 + ']:\tASSERT failed (' + "!('off' in obj)" + ') '); debugger; } } while (false);
-    do { if (!(!('emit' in obj))) { console.error("eventable.js" + '[' + 101 + ']:\tASSERT failed (' + "!('emit' in obj)" + ') '); debugger; } } while (false);
+    ;
+    ;
+    ;
     obj.on = on;
     obj.off = off;
     obj.emit = emit;
     return obj;
 }
 Eventable.observe = function (obj, methodName, eventName) {
-    do { if (!(obj.emit)) { debugger; throw new Error("eventable.js" + '[' + 113 + ']:\t' + "obj.emit"); } } while (false);
-    eventName = eventName || methodName;
+    ;
+    eventName = validEventName(eventName || methodName);
     var method = obj[methodName];
-    do { if (!(typeof(method) === 'function')) { debugger; throw new Error("eventable.js" + '[' + 118 + ']:\t' + "typeof(method) === 'function'"); } } while (false);
+    ;
     obj[methodName] = function () {
         var result = method.apply(this, arguments);
         var argv = Array.prototype.slice.call(arguments);
@@ -85,15 +103,45 @@ Eventable.observe = function (obj, methodName, eventName) {
     };
     return obj;
 };
+var kAsyncEventableKey = '__steller_async_eventable__';
+function AsyncEventable(obj) {
+    obj = Eventable(obj);
+    var on = obj.on;
+    obj.on = function asyncOn(eventName, watcher) {
+        if (arguments.length > 2) {
+            for (var i = 1, N = arguments.length; i < N; ++i) {
+                asyncOn(eventName, arguments[i]);
+            }
+            return this;
+        }
+        if (!watcher) {
+            return this;
+        }
+        var async = watcher[kAsyncEventableKey];
+        if (!async) {
+            Object.defineProperty(watcher, kAsyncEventableKey, {
+                value: (async = function () {
+                    var argv = arguments;
+                    setTimeout(function () { watcher.apply(obj, argv); }, 0);
+                }),
+                enumerable: false,
+                configurable: false,
+                writable: false
+            });
+        }
+        on(eventName, async);
+    };
+    return obj;
+}
 var GraphNode = (function () {
     function GraphNode(node, inputs, outputs) {
         node.inputs = inputs || [];
         node.outputs = outputs || [];
         node.numberOfInputs = node.inputs.length;
         node.numberOfOutputs = node.outputs.length;
-        do { if (!(node.numberOfInputs + node.numberOfOutputs > 0)) { console.error("graphnode.js" + '[' + 37 + ']:\tASSERT failed (' + "node.numberOfInputs + node.numberOfOutputs > 0" + ') '); debugger; } } while (false);
+        ;
         node.context = (node.inputs[0] && node.inputs[0].context) || (node.outputs[0] && node.outputs[0].context);
-        do { if (!(node.context)) { console.error("graphnode.js" + '[' + 41 + ']:\tASSERT failed (' + "node.context" + ') '); debugger; } } while (false);
+        ;
         node.connect = function (target, outIx, inIx) {
             var i, N, inPin, outPin;
             target = target || node.context.destination;
@@ -266,7 +314,7 @@ Param.expose = function (obj1, obj2, listOfParamNames) {
         listOfParamNames = Param.names(obj1);
     }
     listOfParamNames.forEach(function (n) {
-        do { if (n in obj2) { console.warning("param.js" + '[' + 150 + ']:\tWARNING!\t' + "n in obj2"); } } while (false);
+        ;
         obj2[n] = obj1[n];
     });
     return Param;
@@ -339,7 +387,7 @@ Param.prototype.changed = function () {
     return this;
 };
 Param.prototype.alias = function (name, label) {
-    do { if (!(name)) { console.error("param.js" + '[' + 266 + ']:\tASSERT failed (' + "name" + ') ', "Param.alias call needs name as first argument."); debugger; } } while (false);
+    ;
     var self = this;
     var p = Object.create(self);
     p.spec = Object.create(self.spec);
@@ -523,7 +571,7 @@ function PeriodicTimer(callback, precision_ms) {
         }
         return running;
     });
-    do { if (precision_ms <= 5) { console.warning("periodictimer.js" + '[' + 93 + ']:\tWARNING!\t' + "precision_ms <= 5"); } } while (false);
+    ;
     self.computeAheadInterval_secs = (Math.round(precision_ms * 3.333)) / 1000;
     return self;
 }
@@ -906,7 +954,7 @@ function Scheduler(audioContext, options) {
         function track_iter(sched, clock, next, startIndex, endIndex) {
             var i = 0, i_end = models.length;
             if (arguments.length > 3) {
-                do { if (!(arguments.length === 5)) { console.error("scheduler.js" + '[' + 581 + ']:\tASSERT failed (' + "arguments.length === 5" + ') '); debugger; } } while (false);
+                ;
                 i = startIndex;
                 i_end = endIndex;
             }
@@ -937,7 +985,7 @@ function Scheduler(audioContext, options) {
         fire = function (callback) {
             return function (sched, clock, next) {
                 var t = time_secs();
-                do { if (clock.t1 < t) { console.warning("scheduler.js" + '[' + 634 + ']:\tWARNING!\t' + "clock.t1 < t"); } } while (false);
+                ;
                 callback(clock);
                 next(sched, clock, stop);
             };
@@ -1414,6 +1462,7 @@ function getHighResPerfTimeFunc() {
         return node;
     }
     steller.Eventable = Eventable;
+    steller.AsyncEventable = AsyncEventable;
     steller.GraphNode = GraphNode;
     steller.SoundModel = SoundModel;
     steller.Param = Param;
@@ -1430,7 +1479,7 @@ function getHighResPerfTimeFunc() {
     }(getRequestAnimationFrameFunc()));
     steller.AudioContext = getAudioContext();
 }((function () { return typeof(window) === 'undefined' ? undefined : window; }()), org.anclab.steller));
-do { if (!(org.anclab.steller)) { console.error("models.js" + '[' + 20 + ']:\tASSERT failed (' + "org.anclab.steller" + ') '); debugger; } } while (false);
+;
 org.anclab.steller.Util.augment('Models',
 function (sh) {
     var steller = org.anclab.steller;
@@ -1552,7 +1601,7 @@ models.mic = (function () {
     }
     function setupMic(micModel, stream) {
         if (!micSource) {
-            do { if (!(stream)) { console.error("models/mic.js" + '[' + 46 + ']:\tASSERT failed (' + "stream" + ') '); debugger; } } while (false);
+            ;
             micSource = AC.createMediaStreamSource(stream);
         }
         micSource.connect(micModel.outputs[0]);
@@ -1632,7 +1681,7 @@ models.spectrum = function (N, smoothingFactor) {
             xhr.open('GET', url, true);
             xhr.responseType = 'arraybuffer';
             xhr.onerror = function (e) {
-                do { console.error("models/sample.js" + '[' + 22 + ']:\t',e); } while (0);
+                ;
                 if (errback) {
                     errback(e, url);
                 }
@@ -1644,7 +1693,7 @@ models.spectrum = function (N, smoothingFactor) {
                             do { if (0 <= LOG_LEVEL) { console.log("models/sample.js" + '[' + 31 + ']:\t', "Sound [" + url + "] loaded!"); } } while (false);
                         },
                         function (err) {
-                            do { console.error("models/sample.js" + '[' + 34 + ']:\t',"Sound [" + url + "] failed to decode."); } while (0);
+                            ;
                             if (errback) {
                                 errback(err, url);
                             }
@@ -1682,7 +1731,7 @@ models.spectrum = function (N, smoothingFactor) {
             }
         };
         function trigger(clock, rate, velocity, sampleOffset, sampleDuration) {
-            do { if (!(soundBuff)) { console.error("models/sample.js" + '[' + 109 + ']:\tASSERT failed (' + "soundBuff" + ') '); debugger; } } while (false);
+            ;
             var source = AC.createBufferSource();
             source.buffer = soundBuff;
             source.connect(level);
@@ -1745,9 +1794,9 @@ models.jsnode = function (spec) {
     var numberOfOutputs = spec.numberOfOutputs || 1;
     var numInputs = numberOfInputs + numParams;
     var numOutputs = numberOfOutputs;
-    do { if (!(numberOfInputs >= 0)) { console.error("models/jsnode.js" + '[' + 66 + ']:\tASSERT failed (' + "numberOfInputs >= 0" + ') '); debugger; } } while (false);
-    do { if (!(numberOfOutputs >= 0)) { console.error("models/jsnode.js" + '[' + 67 + ']:\tASSERT failed (' + "numberOfOutputs >= 0" + ') '); debugger; } } while (false);
-    do { if (!(numOutputs > 0)) { console.error("models/jsnode.js" + '[' + 68 + ']:\tASSERT failed (' + "numOutputs > 0" + ') '); debugger; } } while (false);
+    ;
+    ;
+    ;
     var merger = numInputs > 0 ? AC.createChannelMerger(numInputs) : undefined;
     var splitter = numOutputs > 0 ? AC.createChannelSplitter(numOutputs) : undefined;
     var inputNodes = [];
@@ -1768,9 +1817,9 @@ models.jsnode = function (spec) {
     var paramNames;
     if (spec.audioParams) {
         paramNames = Object.keys(spec.audioParams);
-        do { if (!(!('inputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 90 + ']:\tASSERT failed (' + "!('inputs' in spec.audioParams)" + ') '); debugger; } } while (false);
-        do { if (!(!('outputs' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 91 + ']:\tASSERT failed (' + "!('outputs' in spec.audioParams)" + ') '); debugger; } } while (false);
-        do { if (!(!('playbackTime' in spec.audioParams))) { console.error("models/jsnode.js" + '[' + 92 + ']:\tASSERT failed (' + "!('playbackTime' in spec.audioParams)" + ') '); debugger; } } while (false);
+        ;
+        ;
+        ;
     } else {
         paramNames = [];
     }
@@ -1825,7 +1874,7 @@ models.jsnode = function (spec) {
         sm[pn] = node.gain;
         node.gain.value = spec.audioParams[pn];
         dc.connect(node);
-        do { if (!(!(paramNames[i] in obj))) { console.error("models/jsnode.js" + '[' + 191 + ']:\tASSERT failed (' + "!(paramNames[i] in obj)" + ') ', "Duplicate param name - ", paramNames[i]); debugger; } } while (false);
+        ;
     });
     var kBufferLength = spec.bufferLength || 512;
     var jsn = sm.keep(AC.createScriptProcessor(kBufferLength, numInputs, Math.min(1, numOutputs)));
