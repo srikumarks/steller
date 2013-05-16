@@ -6,6 +6,7 @@ org.anclab.steller = org.anclab.steller || {};
 var validEventName = (function () {
     var dummy = {};
     return function (eventName) {
+        ;
         if (dummy[eventName]) {
             throw new Error('Invalid event name - ' + eventName);
         }
@@ -20,17 +21,13 @@ var nextEventableWatcherID = 1;
 function Eventable(obj) {
     var watchers = {};
     function on(eventName, watcher) {
+        ;
+        ;
         var i, N;
         eventName = validEventName(eventName);
-        if (arguments.length > 2) {
-            for (i = 1, N = arguments.length; i < N; ++i) {
-                this.on(eventName, arguments[i]);
-            }
-            return this;
-        }
         var eventWatchers = watchers[eventName] || (watchers[eventName] = {});
-        var id = (watcher && watcher['__steller_eventable_id__']) || 0;
-        if (id && (id in eventWatchers)) {
+        var id = watcher['__steller_eventable_id__'] || 0;
+        if (id in eventWatchers) {
             return this;
         }
         if (!id) {
@@ -45,14 +42,9 @@ function Eventable(obj) {
         return this;
     }
     function off(eventName, watcher) {
+        ;
         var i, N;
         eventName = validEventName(eventName);
-        if (arguments.length > 2) {
-            for (i = 1, N = arguments.length; i < N; ++i) {
-                this.off(eventName, arguments[i]);
-            }
-            return this;
-        }
         var eventWatchers = watchers[eventName];
         if (!eventWatchers) {
             return this;
@@ -76,7 +68,7 @@ function Eventable(obj) {
             try {
                 eventWatchers[id].apply(this, arguments);
             } catch (e) {
-                do { if (1 <= LOG_LEVEL) { console.log("eventable.js" + '[' + 116 + ']:\t', "Exception in event watcher - ", e); } } while (false);
+                do { if (1 <= LOG_LEVEL) { console.log("eventable.js" + '[' + 107 + ']:\t', "Exception in event watcher - ", e); } } while (false);
             }
         }
         return this;
@@ -108,12 +100,8 @@ function AsyncEventable(obj) {
     obj = Eventable(obj);
     var on = obj.on;
     obj.on = function asyncOn(eventName, watcher) {
-        if (arguments.length > 2) {
-            for (var i = 1, N = arguments.length; i < N; ++i) {
-                asyncOn(eventName, arguments[i]);
-            }
-            return this;
-        }
+        ;
+        ;
         if (!watcher) {
             return this;
         }
