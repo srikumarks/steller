@@ -184,6 +184,7 @@ org.anclab.steller = org.anclab.steller || {};
     }
 
     steller.Eventable     = Eventable;
+    steller.AsyncEventable  = AsyncEventable;
     steller.GraphNode     = GraphNode;
     steller.SoundModel    = SoundModel;
     steller.Param         = Param;
