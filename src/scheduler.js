@@ -66,8 +66,9 @@ function Scheduler(audioContext, options) {
     var time_secs = (function () {
         if (!audioContext) {
             return getHighResPerfTimeFunc() || (function () { return Date.now() * 0.001; });
-        } else if (audioContext instanceof AudioContext) {
+        } else if (audioContext.createGain || audioContext.createGainNode) {
             instant_secs = 1 / audioContext.sampleRate;
+            audioContext.createGain = audioContext.createGainNode = (audioContext.createGain || audioContext.createGainNode);
             audioContext.createGainNode();  // Looks useless, but it gets the
             // audioContext.currentTime running.
             // Otherwise currentTime continues to
