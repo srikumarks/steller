@@ -683,8 +683,9 @@ function Scheduler(audioContext, options) {
     var time_secs = (function () {
         if (!audioContext) {
             return getHighResPerfTimeFunc() || (function () { return Date.now() * 0.001; });
-        } else if (audioContext instanceof AudioContext) {
+        } else if (audioContext.createGain || audioContext.createGainNode) {
             instant_secs = 1 / audioContext.sampleRate;
+            audioContext.createGain = audioContext.createGainNode = (audioContext.createGain || audioContext.createGainNode);
             audioContext.createGainNode();
             return function () {
                 return audioContext.currentTime;
@@ -969,7 +970,7 @@ function Scheduler(audioContext, options) {
     }
     var fire;
     if (options && options.diagnostics) {
-        do { if (4 <= LOG_LEVEL) { console.log("scheduler.js" + '[' + 630 + ']:\t', "fire: diagnostics on"); } } while (false);
+        do { if (4 <= LOG_LEVEL) { console.log("scheduler.js" + '[' + 631 + ']:\t', "fire: diagnostics on"); } } while (false);
         fire = function (callback) {
             return function (sched, clock, next) {
                 var t = time_secs();
