@@ -69,7 +69,31 @@ function getRequestAnimationFrameFunc() {
 // Gets the AudioContext class when in a browser environment.
 function getAudioContext() {
     try {
-        return (window.webkitAudioContext || window.mozAudioContext);
+        var AC = (window.AudioContext || window.webkitAudioContext || window.mozAudioContext);
+
+        function myAC() {
+            var ac = new AC();
+
+            // Future compatible names.
+            ac.createGain = ac.createGainNode = (ac.createGain || ac.createGainNode);
+            ac.createDelay = ac.createDelayNode = ac.createDelay || ac.createDelayNode;
+            ac.createScriptProcessor = ac.createJavaScriptNode = (ac.createScriptProcessor || ac.createJavaScriptNode);
+
+            var AudioParam = ac.createGain().gain.__proto__.__proto__;
+            AudioParam.setTargetAtTime = AudioParam.setTargetValueAtTime = (AudioParam.setTargetAtTime || AudioParam.setTargetValueAtTime);
+
+            var BufferSource = ac.createBufferSource().__proto__;
+            BufferSource.start = BufferSource.noteOn = (BufferSource.start || BufferSource.noteOn);
+            BufferSource.stop = BufferSource.noteOff = (BufferSource.stop || BufferSource.noteOff);
+
+            var Oscillator = ac.createOscillator().__proto__;
+            Oscillator.start = Oscillator.noteOn = (Oscillator.start || Oscillator.noteOn);
+            Oscillator.stop = Oscillator.noteOff = (Oscillator.stop || Oscillator.noteOff);
+
+            return ac;
+        }
+
+        return myAC;
     } catch (e) {
         return undefined;
     }
@@ -86,6 +110,10 @@ function getHighResPerfTimeFunc() {
             // High resolution performance time available.
             return function () {
                 return perfNow.call(perf) * 0.001;
+            };
+        } else {
+            return function () {
+                return Date.now() * 0.001;
             };
         }
     } catch (e) {
