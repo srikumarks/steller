@@ -5,6 +5,10 @@ parameters of various kinds to objects and a `Scheduler` for sequencing
 audio events just in time. These classes are all available under the
 namespace `org.anclab.steller`.
 
+(See [Gurur Brahma](http://sriku.org/demos/gurur/) for a fairly sophisticated example
+of using Steller to present a simple chant melody with
+precisely synchronized animations.)
+
 [Web Audio API]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html
 
 ## GraphNode
