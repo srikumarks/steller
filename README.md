@@ -5,9 +5,14 @@ parameters of various kinds to objects and a `Scheduler` for sequencing
 audio events just in time. These classes are all available under the
 namespace `org.anclab.steller`.
 
-(See [Gurur Brahma](http://sriku.org/demos/gurur/) for a fairly sophisticated example
-of using Steller to present a simple chant melody with
-precisely synchronized animations.)
+Examples -
+
+1. See [Gurur Brahma](http://sriku.org/demos/gurur/) for a fairly sophisticated
+   example of using Steller to present a simple chant melody with precisely
+   synchronized animations.
+2. [Tala Player](http://talakeeper.org/talas.html) is a free player for the
+   various Carnatic tala patterns. The visualization and the sound are both
+   expressed using a single steller composition.
 
 [Web Audio API]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html
 
