@@ -144,9 +144,25 @@ You use the methods of the scheduler object to make specifications or "models" a
   `dynamic`.
 - `sh.sync()` makes a synchronizer that can be used to mark various points
   within a composition where a particular model's playback can be synced.
+
+```js
+    var s1 = sh.sync();
+    var trk = sh.track([model1, model2, ..., s1, ... modelN]);
+    sh.play(trk); // Start playing the track.
+    s1.play(model); // Will cause model to play when trk gets to s1.
+```
+
 - `sh.gate()` makes an action that can be used to pause/resume at certain
   points within a composition. This is useful for context dependent
   pause/resume support.
+
+```js
+    var g1 = sh.gate();
+    var trk = sh.track([model1, model2, ..., g1, ... modelN]);
+    sh.play(trk); // Start playing the track.
+    g1.close(); // Pause when the play back gets to g1.
+    g1.open(); // Resume if paused at g1, otherwise equivalent to sh.cont.
+```
 
 The following operators are available for working with visual actions. Audio
 may be computed a little ahead of time that may span a few visual frames. These
