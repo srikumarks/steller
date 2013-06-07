@@ -114,7 +114,17 @@ You use the methods of the scheduler object to make specifications or "models" a
   start in "parallel", but doesn't wait for them to finish.
 - `sh.dynamic(function (clock) { return model; })` makes a "dynamic model" that
   will behave like whatever `model` the given function returns, at the time the
-  dynamic model gets to run.
+  dynamic model gets to run. You can code up temporal recursion using `dynamic` 
+  like this -
+
+```js
+    var callback = sh.dynamic(function (clock) {
+        // 1. Make some noise at clock.t1
+        // 2. Schedule ourselves into the future.
+        return sh.track([sh.delay(0.5), callback]);
+    });
+```
+
 - `sh.fire(function (clock) {...})` will cause the given callback to be called
   at the time the model is performed. The resultant action itself has zero
   duration.
