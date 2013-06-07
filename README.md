@@ -33,13 +33,12 @@ glue functionality such as watching for changes and binding to HTML UI elements.
 - `obj.param = Param({min: 0, max: 100, value: 50})`
 - `obj.param = Param({min: 0, max: 100, audioParam: anAudioParam})`
 - `obj.param = Param({options: ["one", "two", "three"], value: "one"})`
-- `obj.param.define({min: 0, max: 100, getter: function () {...}, setter: function (value) {...}})`
 - `obj.param.watch(function (value, param) {...});`
 - `obj.param.unwatch(aPreviouslyInstalledCallback)`
 - `obj.param.changed()` forces observer notification.
-- `Param.names(obj)` gets names of all exposed params in `obj`
 - `obj.param.bind(elem, optional<Scheduler>)`
 - `obj.param.unbind(elem)`
+- `Param.names(obj)` gets names of all exposed params in `obj`
 
 
 Ex:
@@ -52,15 +51,16 @@ Ex:
 
 ## SoundModel
 
-A sound model is just a parameterizable graph node.
-
-    function SoundModel(obj, inputs, outputs) {
-        return Parameterize(GraphNode(obj, inputs, outputs));
-        // Note that Parameterize, in the latest implementation, does nothing
-        // since parameters are now reified as objects.
-    }
+A sound model is just an alias for a graph node. Ok not quite. It is
+a grpah node, but with the `connect` and `disconnect` calls observable.
 
 This is available as `org.anclab.steller.SoundModel`.
+
+Usage: `var sm = org.anclab.steller.SoundModel(obj, [inputs..], [outputs..]);`
+
+- `sm.on('connect', function () { console.log('connected'); })`
+- `sm.on('disconnect', function () { console.log('disconnected'); })`
+
 
 ## Scheduler
 
