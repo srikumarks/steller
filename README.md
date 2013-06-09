@@ -69,16 +69,29 @@ Usage: `var sm = org.anclab.steller.SoundModel(obj, [inputs..], [outputs..]);`
 
 ## Scheduler
 
-A just-in-time scheduler for continuous temporal behaviour. It threads a clock
-object through sequential events part of a single "track". Multiple `track`s
-can be `spawn`ed or `fork`ed in parallel and each can have its own clock
-object.  The clock object tracks both absolute time and a rate integrated
-pseudo time that can be used for things like tempo changes. The complexity of
-the scheduler is proportional to the number of simultaneously running tracks.
+A just-in-time scheduler for continuous temporal behaviour. The [Web Audio API]
+features sample accurate scheduling of triggered sounds, oscillators and
+parameter curves. For interactive music applications, these need to be
+specified just in time so that the system feels responsive to user input, while
+not sacrificing timing precision. The Scheduler lets you focus on specifying
+the *relationships* between the parts of your composition (which can include
+sound as well as visuals) while taking care of the performance of the
+specification.
+
+Scheduler threads a clock object through sequential events part of a single
+"track". Multiple `track`s can be `spawn`ed or `fork`ed in parallel and each
+can have its own clock object.  The clock object tracks both absolute time and
+a rate integrated pseudo time that can be used for things like tempo changes.
+The complexity of the scheduler is proportional to the number of simultaneously
+running tracks.
 
 *Usage*: `var sh = new org.anclab.steller.Scheduler(audioContext);`
+Use the various methods of `sh` to create a specification or "model"
+of the desired performance, and then `sh.play()` to play it.
 
-Here is [a bare bones demo] of using the scheduler.
+Here is [a bare bones demo] of using the scheduler. To try out the sample code
+below, open that demo page. Once the page loads, open the developer console.
+You can now copy-paste the code into the console to run it.
 
 [a bare bones demo]: http://srikumarks.github.com/steller
 
@@ -92,22 +105,61 @@ You use the methods of the scheduler object to make specifications or "models" a
 - `sh.stop` is a model that will cause the track in which it occurs to
   terminate.
 - `sh.cont` is a model that is a no-op when encountered in a track.
-- `sh.track(model1, model2, ...)` makes a sequence for performing the given
-  models one after another.
-- `sh.slice(aTrack, startIndex, endIndex)` makes a "slice" of the given track
-  that can be played independently.
+- `sh.fire(function (clock) {...})` will cause the given callback to be called
+  at the time the model is performed. The resultant action itself has zero
+  duration. Here is a "ping" model -
+
+```js
+var ping = function (freq) {
+    var decayTime = 0.5 * 440.0 / freq;
+    return sh.fire(function (clock) {
+        var osc = sh.audioContext.createOscillator();
+        osc.frequency.value = freq;
+        var g = sh.audioContext.createGain();
+        osc.connect(g);
+        g.connect(sh.audioContext.destination);
+        g.gain.value = 0.25;
+        g.gain.setValueAtTime(0.25, clock.t1);
+        g.gain.setTargetAtTime(0.0, clock.t1, decayTime);
+        osc.start(clock.t1);
+        osc.stop(clock.t1 + decayTime * 12);
+    });
+};
+sh.play(ping(440));
+```
+
 - `sh.delay(dur, [callback])` will cause the models that follow a `delay` in a
   sequence to occur at a later time.  If a `callback` is specified, it will be
   called like `callback(clock, t1r, t2r, startTime, endTime)` for every "tick"
   of the scheduler until the delay finishes. This is useful to perform timed
   animations.
+- `sh.track(model1, model2, ...)` makes a sequence for performing the given
+  models one after another. Load the "ping" model above and then run the following code -
+
+```js
+sh.play(sh.track([ping(440), sh.delay(1.0), ping(660), sh.delay(0.5), ping(880)]));
+```
+
+- `sh.slice(aTrack, startIndex, endIndex)` makes a "slice" of the given track
+  that can be played independently.
 - `sh.loop(model)` makes a model that will loop the given model forever, thus
-  never terminating until a `stop` is encountered.
+  never terminating until a `stop` is encountered. The following will  play
+  a never enging series of "ping"s. (Use `sh.cancel()` to stop.)
+
+```js
+sh.play(sh.loop(sh.track([ping(440), sh.delay(0.5)])));
+```
+  
 - `sh.loop_while(flag, model)` makes a model that will loop as long as the
   given `flag.valueOf()` is truthy. Once it becomes falsy, the loop terminates
   and continues on to the action that follows it in a sequence.
 - `sh.repeat(n, model)` makes a model that will repeat `model` the given `n` 
-  number of times.
+  number of times. The following code plays 5 pings in sequence -
+
+```js
+sh.play(sh.repeat(5, sh.track([ping(440), sh.delay(0.5)])));
+```
+
 - `sh.fork(model1, model2, ..)` causes all the given models to start in
   "parallel" and waits for them to finish before continuing.
 - `sh.spawn(model1, model2, ...)` like `fork` causes all the given models to
@@ -125,11 +177,10 @@ You use the methods of the scheduler object to make specifications or "models" a
     });
 ```
 
-- `sh.fire(function (clock) {...})` will cause the given callback to be called
-  at the time the model is performed. The resultant action itself has zero
-  duration.
 - `sh.anim(param, duration, v1, v2)` animates the parameter from value `v1` to
-  value `v2` over the given `duration` using linear interpolation.
+  value `v2` over the given `duration` using linear interpolation. If `param`
+  is an `AudioParam`, then the animation is guaranteed to have sample-accurate
+  timing.
 - `sh.anim(param, duration, function (t) { return value; })` will assign the
   return value of the given function (whose time argument is normalized to
   `[0,1]` range) to the parameter over the given duration.
@@ -147,9 +198,11 @@ You use the methods of the scheduler object to make specifications or "models" a
 
 ```js
     var s1 = sh.sync();
-    var trk = sh.track([model1, model2, ..., s1, ... modelN]);
+    var p440 = ping(440), p880 = ping(880);
+    var halfsec = sh.delay(0.5);
+    var trk = sh.track([p440, halfsec, p440, halfsec, s1, halfsec, p440]);
     sh.play(trk); // Start playing the track.
-    s1.play(model); // Will cause model to play when trk gets to s1.
+    s1.play(p880); // Will cause model to play when trk gets to s1.
 ```
 
 - `sh.gate()` makes an action that can be used to pause/resume at certain
@@ -157,6 +210,7 @@ You use the methods of the scheduler object to make specifications or "models" a
   pause/resume support.
 
 ```js
+    // Pseudocode
     var g1 = sh.gate();
     var trk = sh.track([model1, model2, ..., g1, ... modelN]);
     sh.play(trk); // Start playing the track.
