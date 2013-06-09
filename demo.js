@@ -28,7 +28,7 @@ function ting(sh) {
 
     // halfLife parameter determines the amplitude decay half life (in secs) of
     // a ting at 440Hz.
-    model.params.define({name: 'halfLife', min: 0.001, max: 10, value: 0.5});
+    model.halfLife = steller.Param({min: 0.001, max: 10, value: 0.5});
     
     function play(pitchNumber) {
         return sh.fire(function (clock) {
@@ -92,13 +92,13 @@ function arpeggio(sh) {
 
     // The "playing" parameter indicates (and controls) whether
     // the sequence is playing or not.
-    model.params.define({name: "playing", min: 0, max: 1, value: 0});
+    model.playing = steller.Param({min: 0, max: 1, value: 0});
 
     // Also expose the "halfLife" parameter of the tones being used.
     // Usually `exposeAs` will be used to give a different name according
     // to the perceptual quality of the parameter in the context of this
     // model, but in this case we just expose it as is.
-    model.params.expose(t, "halfLife");
+    model.halfLife = t.halfLife;
 
     // An action that sets playing state to "playing".
     model.start = sh.fire(function () {
@@ -125,8 +125,8 @@ function arpeggio(sh) {
     // Make a parameter for controlling the rate of playback.
     // We'll set the rate "by reference" so that changes to it
     // can take effect between individual notes of the arpeggio.
-    var p = steller.Parameterize({});
-    p.params.define({name: "rate", min: 0.001, max: 1000, value: 1});
+    var p = {};
+    p.rate = steller.Param({min: 0.001, max: 1000, value: 1});
 
     elem('arpeggio_start').onclick = function (event) {
         // Note that you can click "start" again while a sequence is playing
