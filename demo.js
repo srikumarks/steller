@@ -5,7 +5,7 @@
 // Some helpers for the demos.
 var steller = org.anclab.steller;       // Alias for namespace.
 
-var AC = new webkitAudioContext();      // Make an audio context.
+var AC = new steller.AudioContext(); // Make an audio context.
 
 var sh = new steller.Scheduler(AC);     // Create a scheduler and start it running.
 sh.running = true;
