@@ -1432,12 +1432,12 @@ function getAudioContext() {
             ac.createGain = ac.createGainNode = (ac.createGain || ac.createGainNode);
             ac.createDelay = ac.createDelayNode = ac.createDelay || ac.createDelayNode;
             ac.createScriptProcessor = ac.createJavaScriptNode = (ac.createScriptProcessor || ac.createJavaScriptNode);
-            var AudioParam = ac.createGain().gain.__proto__.__proto__;
+            var AudioParam = Object.getPrototypeOf(Object.getPrototypeOf(ac.createGain().gain));
             AudioParam.setTargetAtTime = AudioParam.setTargetValueAtTime = (AudioParam.setTargetAtTime || AudioParam.setTargetValueAtTime);
-            var BufferSource = ac.createBufferSource().__proto__;
+            var BufferSource = Object.getPrototypeOf(ac.createBufferSource());
             BufferSource.start = BufferSource.noteOn = (BufferSource.start || BufferSource.noteOn);
             BufferSource.stop = BufferSource.noteOff = (BufferSource.stop || BufferSource.noteOff);
-            var Oscillator = ac.createOscillator().__proto__;
+            var Oscillator = Object.getPrototypeOf(ac.createOscillator());
             Oscillator.start = Oscillator.noteOn = (Oscillator.start || Oscillator.noteOn);
             Oscillator.stop = Oscillator.noteOff = (Oscillator.stop || Oscillator.noteOff);
             return ac;
