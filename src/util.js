@@ -68,35 +68,83 @@ function getRequestAnimationFrameFunc() {
 
 // Gets the AudioContext class when in a browser environment.
 function getAudioContext() {
-    try {
-        var AC = (window.AudioContext || window.webkitAudioContext || window.mozAudioContext);
 
-        function myAC() {
-            var ac = new AC();
+    // In the code below, all the name aliasing is done at the time the audio
+    // context is instantiated. This approach also makes no reference to
+    // current parameter sets of other nodes so that it is robust to the api
+    // evolving to some extent -- it only depends on the gain node having a
+    // "gain" parameter. This offer a compatibility mode where the old
+    // names are also supported in environments which provide only the new
+    // names.
+    //
+    // See https://github.com/srikumarks/AudioContext-MonkeyPatch
 
-            // Future compatible names.
-            ac.createGain = ac.createGainNode = (ac.createGain || ac.createGainNode);
-            ac.createDelay = ac.createDelayNode = ac.createDelay || ac.createDelayNode;
-            ac.createScriptProcessor = ac.createJavaScriptNode = (ac.createScriptProcessor || ac.createJavaScriptNode);
+    var AC = (function () { return this.AudioContext || this.webkitAudioContext; }());
+    if (!AC) { throw new Error('This environment doesn't support the Web Audio API.'); }
 
-            var AudioParam = Object.getPrototypeOf(Object.getPrototypeOf(ac.createGain().gain));
-            AudioParam.setTargetAtTime = AudioParam.setTargetValueAtTime = (AudioParam.setTargetAtTime || AudioParam.setTargetValueAtTime);
+    return function AudioContext() {
+        var ac, AudioParam, AudioParamOld, BufferSource, Oscillator;
 
-            var BufferSource = Object.getPrototypeOf(ac.createBufferSource());
-            BufferSource.start = BufferSource.noteOn = (BufferSource.start || BufferSource.noteOn);
-            BufferSource.stop = BufferSource.noteOff = (BufferSource.stop || BufferSource.noteOff);
-
-            var Oscillator = Object.getPrototypeOf(ac.createOscillator());
-            Oscillator.start = Oscillator.noteOn = (Oscillator.start || Oscillator.noteOn);
-            Oscillator.stop = Oscillator.noteOff = (Oscillator.stop || Oscillator.noteOff);
-
-            return ac;
+        if (arguments.length === 0) {
+            // Realtime audio context.
+            ac = new AC;
+        } else if (arguments.length === 3) {
+            // Offline audio context.
+            ac = new AC(arguments[0], arguments[1], arguments[2]);
+        } else {
+            throw new Error('Invalid instantiation of AudioContext');
         }
 
-        return myAC;
-    } catch (e) {
-        return undefined;
-    }
+        ac.createGain = ac.createGainNode = (ac.createGain || ac.createGainNode);
+        ac.createDelay = ac.createDelayNode = (ac.createDelay || ac.createDelayNode);
+        ac.createScriptProcessor = ac.createJavaScriptNode = (ac.createScriptProcessor || ac.createJavaScriptNode);
+
+        // Find out the AudioParam prototype object.
+        // Some older implementations keep an additional empty
+        // interface for the gain parameter.
+        AudioParam = Object.getPrototypeOf(ac.createGain().gain);
+        AudioParamOld = Object.getPrototypeOf(AudioParam);
+        if (AudioParamOld.setValueAtTime) {
+            // Checking for the presence of setValueAtTime to find whether
+            // it is the right prototype class is, I expect, more robust than
+            // checking whether the class name is this or that. - Kumar
+            AudioParam = AudioParamOld;
+        }
+
+        AudioParam.setTargetAtTime = AudioParam.setTargetValueAtTime = (AudioParam.setTargetAtTime || AudioParam.setTargetValueAtTime);
+
+        // For BufferSource node, we need to also account for noteGrainOn.
+        BufferSource = Object.getPrototypeOf(ac.createBufferSource());
+        if (BufferSource.start) {
+            if (!BufferSource.noteOn) {
+                BufferSource.noteOn = function noteOn(when) {
+                    return this.start(when); // Ignore other arguments.
+                };
+            }
+            BufferSource.noteOff = BufferSource.stop;
+            if (!BufferSource.noteGrainOn) {
+                BufferSource.noteGrainOn = function noteGrainOn(when, offset, duration) {
+                    return this.start(when, offset, duration);
+                };
+            }
+        } else {
+            BufferSource.start = function start(when, offset, duration) {
+                switch (arguments.length) {
+                    case 1: return this.noteOn(when);
+                    case 3: return this.noteGrainOn(when, offset, duration);
+                    default: throw new Error('Invalid arguments to BufferSource.start');
+                }
+            };
+            BufferSource.stop = BufferSource.noteOff;
+        }
+
+
+        Oscillator = Object.getPrototypeOf(ac.createOscillator());
+        Oscillator.start = Oscillator.noteOn = (Oscillator.start || Oscillator.noteOn);
+        Oscillator.stop = Oscillator.noteOff = (Oscillator.stop || Oscillator.noteOff);
+
+        return ac;
+    };
 }
 
 // Get a time function based on the high resolution performance
