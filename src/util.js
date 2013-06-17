@@ -159,14 +159,13 @@ function getHighResPerfTimeFunc() {
             return function () {
                 return perfNow.call(perf) * 0.001;
             };
-        } else {
-            return function () {
-                return Date.now() * 0.001;
-            };
         }
     } catch (e) {
     }
 
-    return undefined;
+    // Fall back to Date.now().
+    return function () {
+        return Date.now() * 0.001;
+    };
 }
 
