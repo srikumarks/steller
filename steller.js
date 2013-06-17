@@ -1425,27 +1425,54 @@ function getRequestAnimationFrameFunc() {
     }
 }
 function getAudioContext() {
-    try {
-        var AC = (window.AudioContext || window.webkitAudioContext || window.mozAudioContext);
-        function myAC() {
-            var ac = new AC();
-            ac.createGain = ac.createGainNode = (ac.createGain || ac.createGainNode);
-            ac.createDelay = ac.createDelayNode = ac.createDelay || ac.createDelayNode;
-            ac.createScriptProcessor = ac.createJavaScriptNode = (ac.createScriptProcessor || ac.createJavaScriptNode);
-            var AudioParam = Object.getPrototypeOf(Object.getPrototypeOf(ac.createGain().gain));
-            AudioParam.setTargetAtTime = AudioParam.setTargetValueAtTime = (AudioParam.setTargetAtTime || AudioParam.setTargetValueAtTime);
-            var BufferSource = Object.getPrototypeOf(ac.createBufferSource());
-            BufferSource.start = BufferSource.noteOn = (BufferSource.start || BufferSource.noteOn);
-            BufferSource.stop = BufferSource.noteOff = (BufferSource.stop || BufferSource.noteOff);
-            var Oscillator = Object.getPrototypeOf(ac.createOscillator());
-            Oscillator.start = Oscillator.noteOn = (Oscillator.start || Oscillator.noteOn);
-            Oscillator.stop = Oscillator.noteOff = (Oscillator.stop || Oscillator.noteOff);
-            return ac;
+    var AC = (function () { return this.AudioContext || this.webkitAudioContext; }());
+    if (!AC) { return undefined; }
+    return function AudioContext() {
+        var ac, AudioParam, AudioParamOld, BufferSource, Oscillator;
+        if (arguments.length === 0) {
+            ac = new AC;
+        } else if (arguments.length === 3) {
+            ac = new AC(arguments[0], arguments[1], arguments[2]);
+        } else {
+            throw new Error('Invalid instantiation of AudioContext');
         }
-        return myAC;
-    } catch (e) {
-        return undefined;
-    }
+        ac.createGain = ac.createGainNode = (ac.createGain || ac.createGainNode);
+        ac.createDelay = ac.createDelayNode = (ac.createDelay || ac.createDelayNode);
+        ac.createScriptProcessor = ac.createJavaScriptNode = (ac.createScriptProcessor || ac.createJavaScriptNode);
+        AudioParam = Object.getPrototypeOf(ac.createGain().gain);
+        AudioParamOld = Object.getPrototypeOf(AudioParam);
+        if (AudioParamOld.setValueAtTime) {
+            AudioParam = AudioParamOld;
+        }
+        AudioParam.setTargetAtTime = AudioParam.setTargetValueAtTime = (AudioParam.setTargetAtTime || AudioParam.setTargetValueAtTime);
+        BufferSource = Object.getPrototypeOf(ac.createBufferSource());
+        if (BufferSource.start) {
+            if (!BufferSource.noteOn) {
+                BufferSource.noteOn = function noteOn(when) {
+                    return this.start(when);
+                };
+            }
+            BufferSource.noteOff = BufferSource.stop;
+            if (!BufferSource.noteGrainOn) {
+                BufferSource.noteGrainOn = function noteGrainOn(when, offset, duration) {
+                    return this.start(when, offset, duration);
+                };
+            }
+        } else {
+            BufferSource.start = function start(when, offset, duration) {
+                switch (arguments.length) {
+                    case 1: return this.noteOn(when);
+                    case 3: return this.noteGrainOn(when, offset, duration);
+                    default: throw new Error('Invalid arguments to BufferSource.start');
+                }
+            };
+            BufferSource.stop = BufferSource.noteOff;
+        }
+        Oscillator = Object.getPrototypeOf(ac.createOscillator());
+        Oscillator.start = Oscillator.noteOn = (Oscillator.start || Oscillator.noteOn);
+        Oscillator.stop = Oscillator.noteOff = (Oscillator.stop || Oscillator.noteOff);
+        return ac;
+    };
 }
 function getHighResPerfTimeFunc() {
     try {
@@ -1455,14 +1482,12 @@ function getHighResPerfTimeFunc() {
             return function () {
                 return perfNow.call(perf) * 0.001;
             };
-        } else {
-            return function () {
-                return Date.now() * 0.001;
-            };
         }
     } catch (e) {
     }
-    return undefined;
+    return function () {
+        return Date.now() * 0.001;
+    };
 }
     function SoundModel(obj, inputs, outputs) {
         var node = Eventable(GraphNode(obj, inputs, outputs));
@@ -1522,7 +1547,7 @@ models.chime = function () {
             gain.gain.setTargetValueAtTime(0, clock.t1 + model.attackTime.value, halfLife);
             osc.connect(gain);
             gain.connect(output);
-            osc.noteOn(clock.t1);
+            osc.start(clock.t1);
             osc.stop(clock.t1 + dur);
         });
     };
