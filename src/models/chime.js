@@ -43,7 +43,7 @@ models.chime = function () {
 
             osc.connect(gain);
             gain.connect(output);
-            osc.noteOn(clock.t1);
+            osc.start(clock.t1);
             osc.stop(clock.t1 + dur);
         });
     };
