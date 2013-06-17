@@ -10,7 +10,7 @@ models.probe = function () {
     var sigma = Param({min: -1, max: 1, value: 1});
     var energy = Param({min: 0, max: 1, value: 0});
 
-    var js = AC.createJavaScriptNode(512, 1, 1);
+    var js = AC.createScriptProcessor(512, 1, 1);
     var sum = 0, sumSq = 0, k = 1 - Math.exp(Math.log(0.5) / 1024);
 
     js.onaudioprocess = function (e) {

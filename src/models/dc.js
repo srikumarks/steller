@@ -20,7 +20,7 @@ models.dc = (function () {
         var dc = AC.createBufferSource();
         dc.buffer = dcBuffer;
         dc.loop = true;
-        dc.noteOn(0);
+        dc.start(0);
 
         var gain = AC.createGainNode();
         gain.gain.value = value;

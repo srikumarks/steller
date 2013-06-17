@@ -72,6 +72,10 @@
     //      `theSound.play` will play the sound from start to finish and will respond to
     //          the clock's rate control. The sound will first be loaded if not loaded 
     //          already.
+    //      `theSound.note(pitch, startOffset, duration, activeDur)` will play the sound
+    //          starting from the given offset, lasting for the given duration, with the
+    //          sound switching into release after `activeDur`. `pitch` is a live rate 
+    //          factor control.
     models.sample = function (url, errback) {
         var level = AC.createGainNode();
         level.gain.value = 0.25;
@@ -113,7 +117,7 @@
             source.connect(level);
             source.playbackRate.value = rate;
             source.gain.setValueAtTime(0, clock.t1);
-            source.gain.setTargetValueAtTime(velocity, clock.t1, model.attackTime.value / 3);
+            source.gain.setTargetAtTime(velocity, clock.t1, model.attackTime.value / 3);
             if (arguments.length > 3) {
                 source.noteGrainOn(clock.t1, sampleOffset, (arguments.length > 4 ? sampleDuration : source.duration));
             } else {
@@ -148,15 +152,15 @@
                 })
                 ]);
 
-        // Plays the sample as a "note" of a specific duration.
-        // Assumes that the model is already loaded. `pitch`
-        // and `amplitude` are parameters that the resultant
-        // voice will respond to live. `pitch` is a rate scale
-        // factor. `amplitude` is a linear gain. The duration of
-        // the note will be influenced by the clock rate, but
-        // (unlike `play`) the clock rate will not influence the
-        // playback rate of the sound since there is an explicit
-        // pitch control.
+        // Plays the sample as a "note" of a specific duration.  Assumes that
+        // the model is already loaded. The resultant voice will respond live
+        // to `pitch`, which is a rate scale factor. The duration of the note
+        // will be influenced by the clock rate, but (unlike `play`) the clock
+        // rate will not influence the playback rate of the sound since there
+        // is an explicit pitch control. The duration of the resultant note is
+        // given by `duration`, while `activeDur` gives the period for which
+        // the sound will actually remain active before switching into release
+        // mode. It is useful to have these be separate.
         model.note = function (pitch, startOffset, duration, activeDur) {
             if (arguments.length < 4) {
                 activeDur = duration;
@@ -164,14 +168,14 @@
             return sh.dynamic(function (clock) {
                 var source = trigger(clock, pitch.valueOf(), 1.0, startOffset, duration);
                 source.gain.value = 0;
-                source.gain.setTargetValueAtTime(1.0, clock.t1, model.attackTime.value / 3);
-                source.playbackRate.setTargetValueAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
+                source.gain.setTargetAtTime(1.0, clock.t1, model.attackTime.value / 3);
+                source.playbackRate.setTargetAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
 
                 return sh.track([
                     sh.spawn(sh.track([
                             sh.delay(activeDur), 
                             sh.fire(function (clock) {
-                                source.gain.setTargetValueAtTime(0.0, clock.t1, model.releaseTime.value / 3);
+                                source.gain.setTargetAtTime(0.0, clock.t1, model.releaseTime.value / 3);
                                 source.stop(clock.t1 + 12 * model.releaseTime.value);
                             })
                             ])),

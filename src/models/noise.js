@@ -23,13 +23,13 @@ models.noise = (function () {
         gain.gain.value = 1.0;
 
         source.connect(gain);
-        source.noteOn(0);
+        source.start(0);
 
         var dc = models.dc(0);
         dc.connect(gain);
 
         var model = SoundModel({}, [], [gain]);
-        model.spread = Param({min: 0.01, max: 10.0, audioParam: source.gain});
+        model.spread = Param({min: 0.01, max: 10.0, audioParam: source.gain, mapping: 'log'});
         model.mean = dc.level;
 
         return model;
