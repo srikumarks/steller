@@ -6,10 +6,9 @@
 var steller = org.anclab.steller;       // Alias for namespace.
 var util = steller.Util;
 
-var AC = new webkitAudioContext();      // Make an audio context.
+var AC = new steller.AudioContext();      // Make an audio context.
 
 var sh = new steller.Scheduler(AC);     // Create a scheduler and start it running.
-sh.running = true;
 var models = steller.Models(sh);
 
 // Shorthand for DOM element access.
