@@ -14,7 +14,7 @@ models.chime = function () {
     // halfLife parameter determines the amplitude decay half life (in secs) of
     // a ting at 440Hz.
     model.halfLife = Param({min: 0.001, max: 10, value: 0.5, mapping: 'log'});
-    model.attackTime = Param({min: 0.0, max: 1.0, value: 0.01});
+    model.attackTime = Param({min: 0.001, max: 1.0, value: 0.01, mapping: 'log'});
     model.level = Param({min: 0.125, max: 4.0, audioParam: output.gain, mapping: 'log'});
 
     // You can play multiple chimes all mixed into the same output gain node.
@@ -39,7 +39,7 @@ models.chime = function () {
 
             var halfLife = model.halfLife.value * 440 / f;
             var dur = halfLife * 10;
-            gain.gain.setTargetValueAtTime(0, clock.t1 + model.attackTime.value, halfLife);
+            gain.gain.setTargetAtTime(0, clock.t1 + model.attackTime.value, halfLife);
 
             osc.connect(gain);
             gain.connect(output);
