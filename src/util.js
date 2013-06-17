@@ -80,7 +80,7 @@ function getAudioContext() {
     // See https://github.com/srikumarks/AudioContext-MonkeyPatch
 
     var AC = (function () { return this.AudioContext || this.webkitAudioContext; }());
-    if (!AC) { throw new Error('This environment doesn't support the Web Audio API.'); }
+    if (!AC) { return undefined; }
 
     return function AudioContext() {
         var ac, AudioParam, AudioParamOld, BufferSource, Oscillator;
