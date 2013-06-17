@@ -1527,7 +1527,7 @@ models.chime = function () {
     var output = AC.createGainNode();
     var model = SoundModel({}, [], [output]);
     model.halfLife = Param({min: 0.001, max: 10, value: 0.5, mapping: 'log'});
-    model.attackTime = Param({min: 0.0, max: 1.0, value: 0.01});
+    model.attackTime = Param({min: 0.001, max: 1.0, value: 0.01, mapping: 'log'});
     model.level = Param({min: 0.125, max: 4.0, audioParam: output.gain, mapping: 'log'});
     model.play = function (pitchNumber, velocity) {
         if (velocity === undefined) {
@@ -1544,7 +1544,7 @@ models.chime = function () {
             gain.gain.linearRampToValueAtTime(velocity.valueOf() / 8, clock.t1 + model.attackTime.value);
             var halfLife = model.halfLife.value * 440 / f;
             var dur = halfLife * 10;
-            gain.gain.setTargetValueAtTime(0, clock.t1 + model.attackTime.value, halfLife);
+            gain.gain.setTargetAtTime(0, clock.t1 + model.attackTime.value, halfLife);
             osc.connect(gain);
             gain.connect(output);
             osc.start(clock.t1);
@@ -1565,7 +1565,7 @@ models.dc = (function () {
         var dc = AC.createBufferSource();
         dc.buffer = dcBuffer;
         dc.loop = true;
-        dc.noteOn(0);
+        dc.start(0);
         var gain = AC.createGainNode();
         gain.gain.value = value;
         dc.connect(gain);
@@ -1591,11 +1591,11 @@ models.noise = (function () {
         var gain = AC.createGainNode();
         gain.gain.value = 1.0;
         source.connect(gain);
-        source.noteOn(0);
+        source.start(0);
         var dc = models.dc(0);
         dc.connect(gain);
         var model = SoundModel({}, [], [gain]);
-        model.spread = Param({min: 0.01, max: 10.0, audioParam: source.gain});
+        model.spread = Param({min: 0.01, max: 10.0, audioParam: source.gain, mapping: 'log'});
         model.mean = dc.level;
         return model;
     };
@@ -1604,7 +1604,7 @@ models.probe = function () {
     var mean = Param({min: -1, max: 1, value: 0});
     var sigma = Param({min: -1, max: 1, value: 1});
     var energy = Param({min: 0, max: 1, value: 0});
-    var js = AC.createJavaScriptNode(512, 1, 1);
+    var js = AC.createScriptProcessor(512, 1, 1);
     var sum = 0, sumSq = 0, k = 1 - Math.exp(Math.log(0.5) / 1024);
     js.onaudioprocess = function (e) {
         var b = e.inputBuffer.getChannelData(0);
@@ -1771,7 +1771,7 @@ models.spectrum = function (N, smoothingFactor) {
             source.connect(level);
             source.playbackRate.value = rate;
             source.gain.setValueAtTime(0, clock.t1);
-            source.gain.setTargetValueAtTime(velocity, clock.t1, model.attackTime.value / 3);
+            source.gain.setTargetAtTime(velocity, clock.t1, model.attackTime.value / 3);
             if (arguments.length > 3) {
                 source.noteGrainOn(clock.t1, sampleOffset, (arguments.length > 4 ? sampleDuration : source.duration));
             } else {
@@ -1802,13 +1802,13 @@ models.spectrum = function (N, smoothingFactor) {
             return sh.dynamic(function (clock) {
                 var source = trigger(clock, pitch.valueOf(), 1.0, startOffset, duration);
                 source.gain.value = 0;
-                source.gain.setTargetValueAtTime(1.0, clock.t1, model.attackTime.value / 3);
-                source.playbackRate.setTargetValueAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
+                source.gain.setTargetAtTime(1.0, clock.t1, model.attackTime.value / 3);
+                source.playbackRate.setTargetAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
                 return sh.track([
                     sh.spawn(sh.track([
                             sh.delay(activeDur),
                             sh.fire(function (clock) {
-                                source.gain.setTargetValueAtTime(0.0, clock.t1, model.releaseTime.value / 3);
+                                source.gain.setTargetAtTime(0.0, clock.t1, model.releaseTime.value / 3);
                                 source.stop(clock.t1 + 12 * model.releaseTime.value);
                             })
                             ])),
