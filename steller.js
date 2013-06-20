@@ -1425,54 +1425,78 @@ function getRequestAnimationFrameFunc() {
     }
 }
 function getAudioContext() {
-    var AC = (function () { return this.AudioContext || this.webkitAudioContext; }());
-    if (!AC) { return undefined; }
-    return function AudioContext() {
-        var ac, AudioParam, AudioParamOld, BufferSource, Oscillator;
-        if (arguments.length === 0) {
-            ac = new AC;
-        } else if (arguments.length === 3) {
-            ac = new AC(arguments[0], arguments[1], arguments[2]);
-        } else {
-            throw new Error('Invalid instantiation of AudioContext');
+;(function () {
+    var GLOBAL = this;
+    function alias(obj, oldName, newName) {
+        obj[newName] = obj[newName] || obj[oldName];
+        supportDeprecated(obj, oldName, newName);
+    }
+    function supportDeprecated(obj, oldName, newName) {
+        var oldMethod = obj[oldName];
+        obj[oldName] = function () {
+            console.warn('Web Audio API: Deprecated name %s used. Use %s instead.', oldName, newName);
+            obj[oldName] = oldMethod || obj[newName];
+            return oldMethod.apply(this, arguments);
+        };
+    }
+    GLOBAL.AudioContext = (function (AC) {
+        'use strict';
+        if (!AC) {
+            console.warn('Web Audio API not supported on this client.');
+            return undefined;
         }
-        ac.createGain = ac.createGainNode = (ac.createGain || ac.createGainNode);
-        ac.createDelay = ac.createDelayNode = (ac.createDelay || ac.createDelayNode);
-        ac.createScriptProcessor = ac.createJavaScriptNode = (ac.createScriptProcessor || ac.createJavaScriptNode);
-        AudioParam = Object.getPrototypeOf(ac.createGain().gain);
-        AudioParamOld = Object.getPrototypeOf(AudioParam);
-        if (AudioParamOld.setValueAtTime) {
-            AudioParam = AudioParamOld;
-        }
-        AudioParam.setTargetAtTime = AudioParam.setTargetValueAtTime = (AudioParam.setTargetAtTime || AudioParam.setTargetValueAtTime);
-        BufferSource = Object.getPrototypeOf(ac.createBufferSource());
-        if (BufferSource.start) {
-            if (!BufferSource.noteOn) {
-                BufferSource.noteOn = function noteOn(when) {
-                    return this.start(when);
-                };
+        return function AudioContext() {
+            var ac, AudioParam, AudioParamOld, BufferSource, Oscillator;
+            if (arguments.length === 0) {
+                ac = new AC;
+            } else if (arguments.length === 3) {
+                ac = new AC(arguments[0], arguments[1], arguments[2]);
+            } else {
+                throw new Error('Invalid instantiation of AudioContext');
             }
-            BufferSource.noteOff = BufferSource.stop;
-            if (!BufferSource.noteGrainOn) {
-                BufferSource.noteGrainOn = function noteGrainOn(when, offset, duration) {
-                    return this.start(when, offset, duration);
-                };
+            alias(ac, 'createGainNode', 'createGain');
+            alias(ac, 'createDelayNode', 'createDelay');
+            alias(ac, 'createJavaScriptNode', 'createScriptProcessor');
+            AudioParam = Object.getPrototypeOf(ac.createGain().gain);
+            AudioParamOld = Object.getPrototypeOf(AudioParam);
+            if (AudioParamOld.setValueAtTime) {
+                console.warn('Implementation uses extra dummy interface for AudioGainParam. This will be removed.');
+                AudioParam = AudioParamOld;
             }
-        } else {
-            BufferSource.start = function start(when, offset, duration) {
-                switch (arguments.length) {
-                    case 1: return this.noteOn(when);
-                    case 3: return this.noteGrainOn(when, offset, duration);
-                    default: throw new Error('Invalid arguments to BufferSource.start');
-                }
-            };
-            BufferSource.stop = BufferSource.noteOff;
+            alias(AudioParam, 'setTargetValueAtTime', 'setTargetAtTime');
+            BufferSource = Object.getPrototypeOf(ac.createBufferSource());
+            alias(BufferSource, 'noteOff', 'stop');
+            if (BufferSource.start) {
+                supportDeprecated(BufferSource, 'noteOn', 'start');
+                supportDeprecated(BufferSource, 'noteGrainOn', 'start');
+            } else {
+                console.warn('Web Audio API: Only BufferSource.note[Grain]On available. Providing BufferSource.start.');
+                BufferSource.start = function start(when, offset, duration) {
+                    switch (arguments.length) {
+                        case 1: return this.noteOn(when);
+                        case 3: return this.noteGrainOn(when, offset, duration);
+                        default: throw new Error('Invalid arguments to BufferSource.start');
+                    }
+                };
+                supportDeprecated(BufferSource, 'noteOn', 'start');
+                supportDeprecated(BufferSource, 'noteOff', 'stop');
+            }
+            Oscillator = Object.getPrototypeOf(ac.createOscillator());
+            alias(Oscillator, 'noteOn', 'start');
+            alias(Oscillator, 'noteOff', 'stop');
+            return ac;
+        };
+    }(GLOBAL.AudioContext || GLOBAL.webkitAudioContext));
+    GLOBAL.webkitAudioContext = function AudioContext() {
+        console.warn('Use "new AudioContext" instead of "new webkitAudioContext".');
+        switch (arguments.length) {
+            case 0: return new GLOBAL.AudioContext();
+            case 3: return new GLOBAL.AudioContext(arguments[0], arguments[1], arguments[2]);
+            default: throw new Error('Invalid AudioContext creation');
         }
-        Oscillator = Object.getPrototypeOf(ac.createOscillator());
-        Oscillator.start = Oscillator.noteOn = (Oscillator.start || Oscillator.noteOn);
-        Oscillator.stop = Oscillator.noteOff = (Oscillator.stop || Oscillator.noteOff);
-        return ac;
     };
+}());
+    return AudioContext;
 }
 function getHighResPerfTimeFunc() {
     try {
