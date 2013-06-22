@@ -1,5 +1,5 @@
 Steller is a small framework for building composeable sound models in
-Javascript using the [Web Audio API]. It features a `GraphNode` abstraction
+Javascript using the [Web Audio API][WAAPI]. It features a `GraphNode` abstraction
 that encapsulates dynamic signal flow graphs, `Param` objects to add 
 parameters of various kinds to objects and a `Scheduler` for sequencing
 audio events just in time. These classes are all available under the
@@ -7,14 +7,19 @@ namespace `org.anclab.steller`.
 
 Examples -
 
-1. See [Gurur Brahma](http://sriku.org/demos/gurur/) for a fairly sophisticated
-   example of using Steller to present a simple chant melody with precisely
-   synchronized animations.
-2. [Tala Player](http://talakeeper.org/talas.html) is a free player for the
+1. [A "live coding" style playground][playground] for trying out Steller.
+2. [Tala Player][TP] is a free player for the
    various Carnatic tala patterns. The visualization and the sound are both
    expressed using a single steller composition.
+3. See [Gurur Brahma][GB] for a fairly sophisticated
+   example of using Steller to present a simple chant melody with precisely
+   synchronized animations.
 
+[WAAPI]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html
 [Web Audio API]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html
+[playground]: http://srikumarks.github.io/demos/steller_explorer/
+[TP]: http://talakeeper.org/talas.html
+[GB]: http://sriku.org/demos/gurur/
 
 ## GraphNode
 
