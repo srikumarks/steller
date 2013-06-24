@@ -814,7 +814,9 @@ function Scheduler(audioContext, options) {
                     clock.tick();
                     schedule(poll);
                 } else {
-                    animInfo.end = true;
+                    if (animInfo) {
+                        animInfo.end = true;
+                    }
                     if (clock.t2r > clock.t1r) {
                         next(sched, clock.nudgeToRel(endTime), stop);
                     } else {
