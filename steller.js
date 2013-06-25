@@ -1924,7 +1924,7 @@ models.jsnode = function (spec) {
             }
         }
         if (t1 + samplesOutput < t2) {
-            do { if (1 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 168 + ']:\t', "Finished", t2, stopTime); } } while (false);
+            do { if (1 <= LOG_LEVEL) { console.log("models/jsnode.js" + '[' + 172 + ']:\t', "Finished", t2, stopTime); } } while (false);
             hasFinished = true;
             setTimeout(autoDestroy, Math.round(bufferLength * 1000 / AC.sampleRate));
         }
@@ -1950,7 +1950,7 @@ models.jsnode = function (spec) {
         dc && (dc.stop(0), dc.disconnect());
         merger && merger.disconnect();
         sm.drop(jsn);
-        sm.emit && sm.emit('finished');
+        sm.emit && sm.emit('ended');
     };
     var startTimer;
     sm.prepareAheadTime = 0.1;
