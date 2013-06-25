@@ -52,6 +52,10 @@
 // anotherGraphNode.connect(jsn, 0, 3);
 // jsn.connect(AC.destination, 2);
 //      // etc.
+//
+// // Watch for the "ended" event to know when the node is destroyed.
+// jsn.on('ended', function () { /* do something */ });
+//
 models.jsnode = function (spec) {
 
     // Map inputs to merger inputs numbered [0, spec.numInputs)
@@ -205,7 +209,7 @@ models.jsnode = function (spec) {
         dc && (dc.stop(0), dc.disconnect());
         merger && merger.disconnect();
         sm.drop(jsn);
-        sm.emit && sm.emit('finished'); // Indicate that it's all over.
+        sm.emit && sm.emit('ended'); // Indicate that it's all over.
     };
     
     var startTimer;
