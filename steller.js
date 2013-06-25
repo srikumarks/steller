@@ -1459,6 +1459,7 @@ function getAudioContext() {
             alias(ac, 'createGainNode', 'createGain');
             alias(ac, 'createDelayNode', 'createDelay');
             alias(ac, 'createJavaScriptNode', 'createScriptProcessor');
+            alias(ac, 'createWaveTable', 'createPeriodicWave');
             AudioParam = Object.getPrototypeOf(ac.createGain().gain);
             AudioParamOld = Object.getPrototypeOf(AudioParam);
             if (AudioParamOld.setValueAtTime) {
@@ -1486,6 +1487,7 @@ function getAudioContext() {
             Oscillator = Object.getPrototypeOf(ac.createOscillator());
             alias(Oscillator, 'noteOn', 'start');
             alias(Oscillator, 'noteOff', 'stop');
+            alias(Oscillator, 'setWaveTable', 'setPeriodicWave');
             return ac;
         };
     }(GLOBAL.AudioContext || GLOBAL.webkitAudioContext));
