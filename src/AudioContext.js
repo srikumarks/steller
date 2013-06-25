@@ -79,6 +79,7 @@
             alias(ac, 'createGainNode', 'createGain');
             alias(ac, 'createDelayNode', 'createDelay');
             alias(ac, 'createJavaScriptNode', 'createScriptProcessor');
+            alias(ac, 'createWaveTable', 'createPeriodicWave');
 
             // Find out the AudioParam prototype object.
             // Some older implementations keep an additional empty
@@ -118,6 +119,7 @@
             Oscillator = Object.getPrototypeOf(ac.createOscillator());
             alias(Oscillator, 'noteOn', 'start');
             alias(Oscillator, 'noteOff', 'stop');
+            alias(Oscillator, 'setWaveTable', 'setPeriodicWave');
 
             return ac;
         };
