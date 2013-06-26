@@ -701,11 +701,29 @@ function Scheduler(audioContext, options) {
             if (!running) {
                 running = true;
                 mainClock.advanceTo(time_secs());
+                if (playNow.activeFunc) {
+                    playNow = playNow.activeFunc;
+                    play = play.activeFunc;
+                }
                 timer.start();
             }
         } else {
             running = false;
             timer.stop();
+            playNow = (function (playNow) {
+                function inactivePlayNow(model) {
+                    schedule(model);
+                };
+                inactivePlayNow.activeFunc = playNow;
+                return inactivePlayNow;
+            }(playNow));
+            play = (function (play) {
+                function inactivePlay(model) {
+                    schedule(function () { play(model); });
+                }
+                inactivePlay.activeFunc = play;
+                return inactivePlay;
+            }(play));
         }
     });
     self.frame_rate = Param({min: 15, max: 75, value: 60});
@@ -970,7 +988,7 @@ function Scheduler(audioContext, options) {
     }
     var fire;
     if (options && options.diagnostics) {
-        do { if (4 <= LOG_LEVEL) { console.log("scheduler.js" + '[' + 631 + ']:\t', "fire: diagnostics on"); } } while (false);
+        do { if (4 <= LOG_LEVEL) { console.log("scheduler.js" + '[' + 649 + ']:\t', "fire: diagnostics on"); } } while (false);
         fire = function (callback) {
             return function (sched, clock, next) {
                 var t = time_secs();
