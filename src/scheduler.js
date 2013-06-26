@@ -94,11 +94,29 @@ function Scheduler(audioContext, options) {
             if (!running) {
                 running = true;
                 mainClock.advanceTo(time_secs());
+                if (playNow.activeFunc) {
+                    playNow = playNow.activeFunc;
+                    play = play.activeFunc;
+                }
                 timer.start();
             }
         } else {
             running = false;
             timer.stop();
+            playNow = (function (playNow) {
+                function inactivePlayNow(model) {
+                    schedule(model);
+                };
+                inactivePlayNow.activeFunc = playNow;
+                return inactivePlayNow;
+            }(playNow));
+            play = (function (play) {
+                function inactivePlay(model) {
+                    schedule(function () { play(model); });
+                }
+                inactivePlay.activeFunc = play;
+                return inactivePlay;
+            }(play));
         }
     });
 
