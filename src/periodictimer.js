@@ -51,10 +51,12 @@ function PeriodicTimer(callback, precision_ms) {
         self.start = function () {
             if (!running) {
                 running = true;
-                requestAnimationFrame(function () {
+                intervalID = requestAnimationFrame(function () {
                     if (running) {
-                        requestAnimationFrame(arguments.callee);
+                        intervalID = requestAnimationFrame(arguments.callee);
                         callback();
+                    } else {
+                        intervalID = undefined;
                     }
                 });
             }
@@ -62,6 +64,10 @@ function PeriodicTimer(callback, precision_ms) {
 
         self.stop = function () {
             running = false;
+            if (intervalID) {
+                cancelAnimationFrame(intervalID);
+                intervalID = undefined;
+            }
         };
     } else {
         self.start = function () {
