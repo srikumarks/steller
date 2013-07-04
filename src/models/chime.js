@@ -17,6 +17,27 @@ models.chime = function () {
     model.attackTime = Param({min: 0.001, max: 1.0, value: 0.01, mapping: 'log'});
     model.level = Param({min: 0.125, max: 4.0, audioParam: output.gain, mapping: 'log'});
 
+    function trigger(clock, pitchNumber, velocity) {
+        var f = util.p2f(pitchNumber.valueOf());
+        var osc = AC.createOscillator();
+        osc.type = osc.SINE;
+        osc.frequency.value = f;
+
+        var gain = AC.createGainNode();
+        gain.gain.value = 0;
+        gain.gain.setValueAtTime(0, clock.t1);
+        gain.gain.linearRampToValueAtTime(velocity.valueOf() / 8, clock.t1 + model.attackTime.value);
+
+        var halfLife = model.halfLife.value * 440 / f;
+        var dur = halfLife * 10;
+        gain.gain.setTargetAtTime(0, clock.t1 + model.attackTime.value, halfLife);
+
+        osc.connect(gain);
+        gain.connect(output);
+        osc.start(clock.t1);
+        osc.stop(clock.t1 + dur);
+    }
+
     // You can play multiple chimes all mixed into the same output gain node.
     // Note that there is no standard way to "play" or "stop" any sound model.
     // This is left open since models may need different behaviours in this
@@ -27,24 +48,19 @@ models.chime = function () {
             velocity = 1.0;
         }
         return sh.fire(function (clock) {
-            var f = util.p2f(pitchNumber.valueOf());
-            var osc = AC.createOscillator();
-            osc.type = osc.SINE;
-            osc.frequency.value = f;
+            trigger(clock, pitchNumber, velocity);
+        });
+    };
 
-            var gain = AC.createGainNode();
-            gain.gain.value = 0;
-            gain.gain.setValueAtTime(0, clock.t1);
-            gain.gain.linearRampToValueAtTime(velocity.valueOf() / 8, clock.t1 + model.attackTime.value);
-
-            var halfLife = model.halfLife.value * 440 / f;
-            var dur = halfLife * 10;
-            gain.gain.setTargetAtTime(0, clock.t1 + model.attackTime.value, halfLife);
-
-            osc.connect(gain);
-            gain.connect(output);
-            osc.start(clock.t1);
-            osc.stop(clock.t1 + dur);
+    // While "play" triggers a tone and has zero intrinsic duration,
+    // "note" lasts for the given duration.
+    model.note = function (pitchNumber, duration, velocity) {
+        if (velocity === undefined) {
+            velocity = 1.0;
+        }
+        return sh.dynamic(function (clock) {
+            trigger(clock, pitchNumber, velocity);
+            return delay(duration);
         });
     };
 
