@@ -94,8 +94,8 @@ function Scheduler(audioContext, options) {
             if (!running) {
                 running = true;
                 mainClock.advanceTo(time_secs());
-                if (playNow.activeFunc) {
-                    playNow = playNow.activeFunc;
+                if (playAsap.activeFunc) {
+                    playAsap = playAsap.activeFunc;
                     play = play.activeFunc;
                 }
                 timer.start();
@@ -103,13 +103,13 @@ function Scheduler(audioContext, options) {
         } else {
             running = false;
             timer.stop();
-            playNow = (function (playNow) {
+            playAsap = (function (playAsap) {
                 function inactivePlayNow(model) {
                     schedule(model);
                 };
-                inactivePlayNow.activeFunc = playNow;
+                inactivePlayNow.activeFunc = playAsap;
                 return inactivePlayNow;
-            }(playNow));
+            }(playAsap));
             play = (function (play) {
                 function inactivePlay(model) {
                     schedule(function () { play(model); });
@@ -301,8 +301,14 @@ function Scheduler(audioContext, options) {
     // Having constructed a model, you use play() to play it.
     // The playing starts immediately. See `delay` below if you want
     // the model to start playing some time in the future.
-    function playNow(model) {
+    function playAsap(model) {
         model(self, mainClock.copy(), stop);
+    }
+
+    // Bypasses the mainClock and directly bases the
+    // time on audioContext.currentTime.
+    function playNow(model) {
+        model(self, new Clock(time_secs(), 0, clockDt, 1.0), stop);
     }
 
     var play = (function () {
@@ -320,12 +326,12 @@ function Scheduler(audioContext, options) {
                 } else {
                     mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
                     compute_upto_secs = mainClock.t1;
-                    self.play = play = playNow;
-                    playNow(model);
+                    self.play = play = playAsap;
+                    playAsap(model);
                 }
             };
         } else {
-            return playNow;
+            return playAsap;
         }
     }());
 
@@ -1160,6 +1166,7 @@ function Scheduler(audioContext, options) {
     self.perform        = perform;
     self.cancel         = cancel;
     self.play           = play;
+    self.playNow        = playNow;
     self.stop           = stop;
     self.cont           = cont;
     self.delay          = delay;
