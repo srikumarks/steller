@@ -142,6 +142,7 @@ org.anclab.steller = org.anclab.steller || {};
 
 (function (window, steller) {
 
+#include "nexttick.js"
 #include "eventable.js"
 #include "graphnode.js"
 #include "param.js"

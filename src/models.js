@@ -38,6 +38,7 @@ function (sh) {
 #include "models/spectrum.js"
 #include "models/sample.js"
 #include "models/jsnode.js"
+#include "models/buffer_queue.js"
 
     return models;
 });
