@@ -15,10 +15,9 @@
    var sh = new org.anclab.steller.Scheduler(ac);
    var q = sh.models.buffer_queue();
    q.connect(ac.destination);
-   q.start(ac.currentTime);
-   q.schedule(function () {
+   q.on('low', function () {
        var phase = 0.0, dphase = 2.0 * Math.PI * 440.0 / 44100.0;
-       return function (q) {
+       return function (lowEvent, q) {
            var audioBuffer = q.createBuffer(1, 1024);
            var chan = audioBuffer.getChannelData(0);
            var i;
@@ -27,11 +26,10 @@
                phase += dphase;
            }
            q.enqueue(audioBuffer);
-           q.schedule(arguments.callee);
        };
    }());
+   q.start(ac.currentTime);
 */
-//
 //
 // model.gain is a Param that controls the output gain of the queue.
 // 
@@ -53,12 +51,11 @@
 // model.latency_secs will give the "currentTime" (according to the
 // audio context) at which the next buffer submitted will begin playing.
 //
-// model.schedule(function (model) {}) will schedule the given function
-// to be called back just in time for the queue to be emptied. The amount
-// of "prepare ahead time" available can be set through model.kPrepareAheadTime_ms.
-// You can therefore use schedule() with a callback as a way to 
-// generate audio.
-//
+// When the queue is running low and it needs some filling up, 
+// it will fire a 'low' event. You can watch for this event and 
+// respond by filling up the queue with more buffers. This event 
+// fires just a little before the queue is about to be emptied,
+// not *after* it is emptied.
 models.buffer_queue = function () {
 
     var output = AC.createGainNode();
@@ -68,6 +65,7 @@ models.buffer_queue = function () {
     var nextBufferTime = -1.0;
     var queue = [];
     var queueDuration = 0.0;
+    var generating = false;
 
     model.gain = Param({min: -10.0, max: 10.0, audioParam: output.gain, mapping: 'log'});
 
@@ -90,6 +88,11 @@ models.buffer_queue = function () {
         }
 
         queueDuration = 0.0;
+    }
+
+    function latency_secs() {
+        // If not started yet, return invalid 0.0 value.
+        return queueDuration + (startTime < 0.0 ? 0.0 : Math.max(0.0, nextBufferTime - AC.currentTime));
     }
 
     model.createBuffer = function (channels, length) {
@@ -123,11 +126,11 @@ models.buffer_queue = function () {
         queue.push(queuedBuffer);
         queueDuration += queuedBuffer.duration;
 
-        if (startTime < 0.0) {
-            return model;
+        if (startTime >= 0.0) {
+            // Continue generation if we've been started.
+            flushQueue();
+            generate();
         }
-
-        flushQueue();
 
         return model;
     };
@@ -136,33 +139,38 @@ models.buffer_queue = function () {
         if (startTime < 0.0) {
             // Not started yet. Start it.
             startTime = nextBufferTime = Math.max(t, AC.currentTime);
-            flushQueue();
+            generate();
         }
 
         return model;
     };
 
-    model.__defineGetter__('latency_secs', function () {
-        // If not started yet, return invalid 0.0 value.
-        return queueDuration + (startTime < 0.0 ? 0.0 : Math.max(0.0, nextBufferTime - AC.currentTime));
-    });
+    model.__defineGetter__('latency_secs', latency_secs);
 
     model.kPrepareAheadTime_ms = 50;
 
-    model.schedule = function (callback) {
-        if (startTime < 0.0) {
-            throw new Error('steller.buffer_queue: Need to start buffer queue before scheduling.');
+    function generate() {
+        if (!generating) {
+            generating = true;
+            schedule(onLow);
         }
+    }
 
+    function onLow() {
+        generating = false;
+        model.emit('low', model);
+    }
+
+    function schedule(callback) {
         var delay_ms = Math.floor(model.latency_secs * 1000);
 
         if (delay_ms > model.kPrepareAheadTime_ms) {
-            setTimeout(callback, Math.floor(delay_ms - model.kPrepareAheadTime_ms), model);
+            setTimeout(callback, Math.floor(delay_ms - model.kPrepareAheadTime_ms));
         } else {
-            steller.nextTick(function () { callback(model); }); // Call right away. Not enough time left.
+            steller.nextTick(callback); // Call right away. Not enough time left.
         }
-    };
- 
+    }
+
     return model;
 };
 
