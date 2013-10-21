@@ -154,10 +154,10 @@ models.buffer_queue = function () {
             throw new Error('steller.buffer_queue: Need to start buffer queue before scheduling.');
         }
 
-        var delay_ms = Math.ceil(model.latency_secs * 1000);
+        var delay_ms = Math.floor(model.latency_secs * 1000);
 
         if (delay_ms > model.kPrepareAheadTime_ms) {
-            setTimeout(callback, delay_ms - model.kPrepareAheadTime_ms, model);
+            setTimeout(callback, Math.floor(delay_ms - model.kPrepareAheadTime_ms), model);
         } else {
             steller.nextTick(function () { callback(model); }); // Call right away. Not enough time left.
         }
