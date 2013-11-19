@@ -4,10 +4,10 @@ steller.min.js.gz : steller.min.js
 	gzip --stdout steller.min.js > steller.min.js.gz
 
 steller.min.js : src/*.js src/models/*.js
-	r.js -o name=src/main out=steller.min.js
+	cd src && r.js -o name=steller out=../steller.min.js
 	
 clean : 
-	rm steller.min.js
+	rm steller.min.js steller.min.js.gz
 
 release : steller.min.js
 	mv steller.min.js _steller.min.js
