@@ -17,28 +17,33 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
 // Must've loaded steller.js before this.
-ASSERT(org.anclab.steller);
+define(["models/chime",
+        "models/dc",
+        "models/noise",
+        "models/probe",
+        "models/mic",
+        "models/spectrum",
+        "models/load_sample",
+        "models/sample",
+        "models/jsnode",
+        "models/buffer_queue"],
+        function (chime, dc, noise, probe, mic, spectrum, load_sample, sample, jsnode, buffer_queue) {
 
-org.anclab.steller.Util.augment('Models',
-function (sh) {
-    var steller         = org.anclab.steller;
-    var util            = org.anclab.steller.Util;
-    var SoundModel      = steller.SoundModel;
-    var GraphNode       = steller.GraphNode;
-    var Param           = steller.Param;
+    return function maker(S, sh) {
 
-    var AC = sh.audioContext;
-    var models = this;
+        var models = sh.models || (sh.models = {});
+        models.chime = chime(S, sh);
+        models.dc = dc(S, sh);
+        models.noise = noise(S, sh);
+        models.probe = probe(S, sh);
+        models.mic = mic(S, sh);
+        models.spectrum = spectrum(S, sh);
+        models.load_sample = load_sample(S, sh);
+        models.sample = sample(S, sh);
+        models.jsnode = jsnode(S, sh);
+        models.buffer_queue = buffer_queue(S, sh);
 
-#include "models/chime.js"
-#include "models/dc.js"
-#include "models/noise.js"
-#include "models/probe.js"
-#include "models/mic.js"
-#include "models/spectrum.js"
-#include "models/sample.js"
-#include "models/jsnode.js"
-#include "models/buffer_queue.js"
+        return models;
+    };
 
-    return models;
 });

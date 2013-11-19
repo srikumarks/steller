@@ -38,7 +38,7 @@
  * be available immediately even if you're working with a dated browser
  * implementation.
  */
-;(function () {
+define(function () {
     var GLOBAL = this;
 
     function alias(obj, oldName, newName) {
@@ -133,5 +133,7 @@
             default: throw new Error('Invalid AudioContext creation');
         }
     };
-}());
+
+    return GLOBAL.AudioContext;
+});
 
