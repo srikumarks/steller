@@ -57,7 +57,7 @@
 // fires just a little before the queue is about to be emptied,
 // not *after* it is emptied.
 define(function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
         var AC = sh.audioContext;
         return function buffer_queue() {
 

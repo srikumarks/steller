@@ -1,5 +1,5 @@
 define(function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
         var AC = sh.audioContext;
 
         // A simple wrapper to get a decoded buffer.

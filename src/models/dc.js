@@ -1,7 +1,7 @@
 
 // A DC source with a "level" parameter.
 define(function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
 
         var i, N, data, dcBuffer;
         var AC = sh.audioContext;

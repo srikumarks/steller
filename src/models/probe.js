@@ -5,7 +5,7 @@
 // sigma change, you can 'watch' the params. This model has no
 // outputs.
 define(function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
         var AC = sh.audioContext;
         return function probe() {
 

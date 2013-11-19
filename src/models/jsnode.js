@@ -56,7 +56,7 @@
 // // Watch for the "ended" event to know when the node is destroyed.
 // jsn.on('ended', function () { /* do something */ });
 define(function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
         var AC = sh.audioContext;
         return function jsnode(spec) {
 

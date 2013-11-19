@@ -8,7 +8,7 @@
 //        sh.play(ch.play(60, 1.0));
 //
 define(function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
         var AC = sh.audioContext;
 
         return function chime() {

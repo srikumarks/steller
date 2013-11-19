@@ -1,5 +1,5 @@
 define(function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
         var AC = sh.audioContext;
 
         // A simple "load and play sample" model that will load the given url when

@@ -11,7 +11,7 @@
 // You must run the .start action to start grabbing. You can stop 
 // using the .stop action.
 define (function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
         var AC = sh.audioContext;
         return function spectrum(N, smoothingFactor) {
             N = N || 1024;

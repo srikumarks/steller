@@ -4,7 +4,7 @@
 //
 // Parameters = "spread" and "mean".
 define(function () {
-    return function maker(S, sh) {
+    return function installer(S, sh) {
         var AC = sh.audioContext;
 
         // Make a 5 second noise buffer (used in Chris Wilson's vocoder).
