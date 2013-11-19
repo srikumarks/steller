@@ -1,4 +1,4 @@
-define(["queue", "param", "periodictimer", "jsnodetimer", "clock", "util"],
+define(["./queue", "./param", "./periodictimer", "./jsnodetimer", "./clock", "./util"],
 function (Queue, Param, PeriodicTimer, JSNodeTimer, Clock, Util) {
 
 //

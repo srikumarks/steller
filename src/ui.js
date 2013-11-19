@@ -1,4 +1,4 @@
-define(["param"], function (Param) {
+define(["./param"], function (Param) {
     var UI = {};
 
     function round(n) {

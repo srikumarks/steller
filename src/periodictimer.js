@@ -25,7 +25,7 @@
 // a measurement of setInterval in the browser (Chrome) - 
 //      {"N":1500,"dt":10,"mean":-687.63,"min":-1381,"max":-1,"deviation":402.51}
 //
-define(["util"], function (Util) {
+define(["./util"], function (Util) {
 
     function PeriodicTimer(callback, precision_ms) {
 

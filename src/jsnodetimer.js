@@ -3,7 +3,7 @@
 //
 // This is a timer class with the same interface as `PeriodicTimer`, but which uses
 // a `JavaScriptNode` to generate the callbacks.
-define(["periodictimer"], function (PeriodicTimer) {
+define(["./periodictimer"], function (PeriodicTimer) {
 
     function preserveNode(node) {
         (window.JSNodeTimer_jsnodes || (window.JSNodeTimer_jsnodes = [])).push(node);

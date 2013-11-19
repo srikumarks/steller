@@ -1,4 +1,4 @@
-define(["eventable"], function (Eventable) {
+define(["./eventable"], function (Eventable) {
 
     var kAsyncEventableKey = '__steller_async_eventable__';
 

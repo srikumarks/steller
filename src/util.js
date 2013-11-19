@@ -1,6 +1,6 @@
 // Utility for prohibiting parameter names such as "constructor",
 // "hasOwnProperty", etc.
-define(["AudioContext"], function (AudioContext) {
+define(["./AudioContext"], function (AudioContext) {
 
     // Some utility functions.
     var Util = {};

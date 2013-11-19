@@ -135,7 +135,7 @@
 // To start with, the Steller API is exposed as a global "package" named
 // `org.anclab.steller`. So, for example, you access the `GraphNode` transformer 
 // as `org.anclab.steller.GraphNode`.
-define(["dbg", "nexttick", "eventable", "async_eventable", "graphnode", "param", "scheduler", "clock", "periodictimer", "jsnodetimer", "ui", "util", "models"],
+define(["./dbg", "./nexttick", "./eventable", "./async_eventable", "./graphnode", "./param", "./scheduler", "./clock", "./periodictimer", "./jsnodetimer", "./ui", "./util", "./models"],
 function (GLOBAL, nextTick, Eventable, AsyncEventable, GraphNode, Param, Scheduler, Clock, PeriodicTimer, JSNodeTimer, UI, Util, Models) {
 
     var steller = {};

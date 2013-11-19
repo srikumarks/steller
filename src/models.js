@@ -17,16 +17,16 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
 // Must've loaded steller.js before this.
-define(["models/chime",
-        "models/dc",
-        "models/noise",
-        "models/probe",
-        "models/mic",
-        "models/spectrum",
-        "models/load_sample",
-        "models/sample",
-        "models/jsnode",
-        "models/buffer_queue"],
+define(["./models/chime",
+        "./models/dc",
+        "./models/noise",
+        "./models/probe",
+        "./models/mic",
+        "./models/spectrum",
+        "./models/load_sample",
+        "./models/sample",
+        "./models/jsnode",
+        "./models/buffer_queue"],
         function (chime, dc, noise, probe, mic, spectrum, load_sample, sample, jsnode, buffer_queue) {
 
     return function maker(S, sh) {
