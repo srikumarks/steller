@@ -58,8 +58,10 @@ the easiest starting point for you.
 
 You can host your own copy of the `steller_amd.min.js` file too.
 
-[RequireJS] http://requirejs.org
-[AMD version of steller] http://sriku.org/lib/steller/steller_amd.min.js
+[RequireJS]: http://requirejs.org
+[AMD release of steller]: http://sriku.org/lib/steller/steller_amd.min.js
+
+# Components
 
 ## GraphNode
 
