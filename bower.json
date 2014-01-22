@@ -1,0 +1,23 @@
+{
+  "name": "steller",
+  "main": "src/steller.js",
+  "version": "0.1.0",
+  "homepage": "https://github.com/srikumarks/steller",
+  "authors": [
+    "Srikumar K. S. <srikumarks@gmail.com>"
+  ],
+  "description": "Steller is a small framework for building composeable sound models in Javascript using the Web Audio API. It features a GraphNode abstraction that encapsulates dynamic signal flow graphs, Param objects to add parameters of various kinds to objects and a Scheduler for sequencing audio events just in time.",
+  "keywords": [
+    "Web Audio API",
+    "Sound models",
+    "Scheduler"
+  ],
+  "license": "LGPL",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
