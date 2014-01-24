@@ -1,7 +1,5 @@
-#include "queue.js"
-#include "periodictimer.js"
-#include "jsnodetimer.js"
-#include "clock.js"
+define(["./queue", "./param", "./periodictimer", "./jsnodetimer", "./clock", "./util"],
+function (Queue, Param, PeriodicTimer, JSNodeTimer, Clock, Util) {
 
 //
 // ## Scheduler
@@ -50,11 +48,11 @@ function Scheduler(audioContext, options) {
     var Timer = PeriodicTimer; // or JSNodeTimer
 
     // We need requestAnimationFrame when scheduling visual animations.
-    var requestAnimationFrame = getRequestAnimationFrameFunc();
+    var requestAnimationFrame = Util.getRequestAnimationFrameFunc();
 
-    var AudioContext = getAudioContext();
+    var AudioContext = Util.getAudioContext();
 
-    if (detectBrowserEnv() && !requestAnimationFrame) {
+    if (Util.detectBrowserEnv() && !requestAnimationFrame) {
         throw new Error('Scheduler needs requestAnimationFrame support. Use a sufficiently modern browser version.');
     }
 
@@ -65,7 +63,7 @@ function Scheduler(audioContext, options) {
      * The scheduler supports both mechanisms for tracking time. */
     var time_secs = (function () {
         if (!audioContext) {
-            return getHighResPerfTimeFunc() || (function () { return Date.now() * 0.001; });
+            return Util.getHighResPerfTimeFunc() || (function () { return Date.now() * 0.001; });
         } else if (audioContext.createGain || audioContext.createGainNode) {
             instant_secs = 1 / audioContext.sampleRate;
             audioContext.createGain = audioContext.createGainNode = (audioContext.createGain || audioContext.createGainNode);
@@ -1196,10 +1194,14 @@ function Scheduler(audioContext, options) {
     // If the Models collection is available, instantiate it for
     // this scheduler so that the user won't have to bother doing that
     // separately.         
-    if (org.anclab.steller.Models) {
-        self.models = org.anclab.steller.Models(self);
+    try {
+        Scheduler.Models(self);
+    } catch (e) {
+        console.log(e);
     }
 
     return self;
-}
+};
 
+return Scheduler;
+});

@@ -1,4 +1,5 @@
-var UI = (function (UI) {
+define(["./param"], function (Param) {
+    var UI = {};
 
     function round(n) {
         var m = n % 1;
@@ -68,32 +69,32 @@ var UI = (function (UI) {
                 slider.value = mapping.toNorm(param);
                 valueDisp.innerText = ' (' + round(param.value) + units + ')';
 
-                        slider.changeModelParameter = function (e) {
-                            // Slider value changed. So change the model parameter.
-                            // Use curve() to map the [0,1] range of the slider to
-                            // the parameter's range.
-                            param.value = mapping.fromNorm(param, parseFloat(this.value));
-                        };
+                slider.changeModelParameter = function (e) {
+                    // Slider value changed. So change the model parameter.
+                    // Use curve() to map the [0,1] range of the slider to
+                    // the parameter's range.
+                    param.value = mapping.fromNorm(param, parseFloat(this.value));
+                };
 
-                        slider.changeSliderValue = function (value) {
-                            // Model value changed. So change the slider. Use curve()
-                            // to map the parameter value to the slider's [0,1] range.
-                            slider.value = mapping.toNorm(param);
-                            valueDisp.innerText = ' (' + round(value) + units + ')';
-                                };
+                slider.changeSliderValue = function (value) {
+                    // Model value changed. So change the slider. Use curve()
+                    // to map the parameter value to the slider's [0,1] range.
+                    slider.value = mapping.toNorm(param);
+                    valueDisp.innerText = ' (' + round(value) + units + ')';
+                };
 
-                                slider.addEventListener('change', slider.changeModelParameter);
-                                param.watch(slider.changeSliderValue);
+                slider.addEventListener('change', slider.changeModelParameter);
+                param.watch(slider.changeSliderValue);
 
-                                [label, slider, valueDisp].forEach(insertBeforeEnd(cont));
-                                div.insertAdjacentElement('beforeend', cont);
-                                }
-                                });
+                [label, slider, valueDisp].forEach(insertBeforeEnd(cont));
+                div.insertAdjacentElement('beforeend', cont);
+            }
+        });
 
-                            return model.ui = div;
+        return (model.ui = div);
     };
 
     return UI;
-}({}));
+});
 
 

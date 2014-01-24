@@ -21,6 +21,40 @@ Examples -
 [TP]: http://talakeeper.org/talas.html
 [GB]: http://sriku.org/demos/gurur/
 
+## Usage
+
+### Using Bower
+
+You can install the latest requirejs version of steller as a [Bower] component.
+This is the preferred method now due to its ease.
+
+    bower install steller
+
+[Bower]: http://bower.io/
+
+### Using RequireJS
+
+If you already use [RequireJS], the [AMD release of steller] is likely
+the easiest starting point for you.
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.9/require.min.js"></script>
+    <script src="http://sriku.org/lib/steller/steller_amd.min.js"></script>
+    <script>
+        require(["steller"], function (steller) {
+            // Make some noise.
+            var sh = new steller.Scheduler(new steller.AudioContext);
+            var ch = sh.models.chime().connect();
+            sh.play(sh.track([72,76,79].map(function (p) { return ch.note(p, 0.5, 0.5); })));
+        });
+    </script>
+
+You can host your own copy of the `steller_amd.min.js` file too.
+
+[RequireJS]: http://requirejs.org
+[AMD release of steller]: http://sriku.org/lib/steller/steller_amd.min.js
+
+# Components
+
 ## GraphNode
 
 Encapsulates a sub-graph between a set of input nodes and a set of output
@@ -29,7 +63,7 @@ nodes. The two primary methods it adds are -
 - `connect(targetGraphNode, outPinIx, inPinIx)`
 - `disconnect(targetGraphNode, outPinIx)`
 
-*Usage*: `var obj = org.anclab.steller.GraphNode(obj, [in1, in2, ...], [out1, out2, ...])` where
+*Usage*: `var obj = steller.GraphNode(obj, [in1, in2, ...], [out1, out2, ...])` where
 `obj` is an object to turn into a `GraphNode`, `inX` are input nodes and `outY`
 are output nodes (either `AudioNode` objects or `GraphNode`s).
 
@@ -38,7 +72,7 @@ are output nodes (either `AudioNode` objects or `GraphNode`s).
 `Param` objects encapsulate dynamic parameters to sound models and provide some basic
 glue functionality such as watching for changes and binding to HTML UI elements.
 
-*Usage*: `org.anclab.steller.Param(spec)` creates a `Param` object.
+*Usage*: `steller.Param(spec)` creates a `Param` object.
 
 - `obj.param = Param({min: 0, max: 100, value: 50})`
 - `obj.param = Param({min: 0, max: 100, audioParam: anAudioParam})`
@@ -64,9 +98,9 @@ Ex:
 A sound model is just an alias for a graph node. Ok not quite. It is
 a grpah node, but with the `connect` and `disconnect` calls observable.
 
-This is available as `org.anclab.steller.SoundModel`.
+This is available as `steller.SoundModel`.
 
-Usage: `var sm = org.anclab.steller.SoundModel(obj, [inputs..], [outputs..]);`
+Usage: `var sm = steller.SoundModel(obj, [inputs..], [outputs..]);`
 
 - `sm.on('connect', function () { console.log('connected'); })`
 - `sm.on('disconnect', function () { console.log('disconnected'); })`
@@ -90,7 +124,7 @@ a rate integrated pseudo time that can be used for things like tempo changes.
 The complexity of the scheduler is proportional to the number of simultaneously
 running tracks.
 
-*Usage*: `var sh = new org.anclab.steller.Scheduler(audioContext);`
+*Usage*: `var sh = new steller.Scheduler(audioContext);`
 Use the various methods of `sh` to create a specification or "model"
 of the desired performance, and then `sh.play()` to play it.
 

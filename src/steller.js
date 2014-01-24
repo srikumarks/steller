@@ -135,20 +135,10 @@
 // To start with, the Steller API is exposed as a global "package" named
 // `org.anclab.steller`. So, for example, you access the `GraphNode` transformer 
 // as `org.anclab.steller.GraphNode`.
+define(["./steller/dbg", "./steller/nexttick", "./steller/eventable", "./steller/async_eventable", "./steller/graphnode", "./steller/param", "./steller/scheduler", "./steller/clock", "./steller/periodictimer", "./steller/jsnodetimer", "./steller/ui", "./steller/util", "./steller/models"],
+function (GLOBAL, nextTick, Eventable, AsyncEventable, GraphNode, Param, Scheduler, Clock, PeriodicTimer, JSNodeTimer, UI, Util, Models) {
 
-org = typeof(org) === 'undefined' ? {} : org;
-org.anclab = org.anclab || {};
-org.anclab.steller = org.anclab.steller || {};
-
-(function (window, steller) {
-
-#include "nexttick.js"
-#include "eventable.js"
-#include "graphnode.js"
-#include "param.js"
-#include "scheduler.js"
-#include "ui.js"
-#include "util.js"
+    var steller = {};
 
     //
     // ## SoundModel
@@ -184,6 +174,7 @@ org.anclab.steller = org.anclab.steller || {};
         return node;
     }
 
+    steller.nextTick      = nextTick;
     steller.Eventable     = Eventable;
     steller.AsyncEventable  = AsyncEventable;
     steller.GraphNode     = GraphNode;
@@ -202,10 +193,10 @@ org.anclab.steller = org.anclab.steller || {};
             return raf(func);   // This is so that steller.requestAnimationFrame
                                 // can be called with anything as "this".
         };
-    }(getRequestAnimationFrameFunc()));
-    steller.AudioContext = getAudioContext();
+    }(Util.getRequestAnimationFrameFunc()));
+    steller.AudioContext = Util.getAudioContext();
 
+    steller.Scheduler.Models = function (sh) { Models(steller, sh); };
 
-}((function () { return typeof(window) === 'undefined' ? undefined : window; }()), org.anclab.steller));
-
-#include "models.js"
+    return steller;
+});

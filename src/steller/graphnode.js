@@ -26,7 +26,7 @@
 // Of course, if you're wrapping all audio nodes anyway, you're free to
 // depart from the "connect" protocol and implement it any way you like :D
 //
-var GraphNode = (function () {
+define(function () {
 
     function GraphNode(node, inputs, outputs) {
         node.inputs             = inputs || [];
@@ -103,7 +103,7 @@ var GraphNode = (function () {
         // from being garbage collected. This is a bug in the current system and
         // `keep` and `drop` are a temporary solution to this problem. However,
         // you can also use them to keep around other nodes.
-        
+
         var preservedNodes = {};
         var thisNodeID = getOrAssignNodeID(node);
 
@@ -161,6 +161,6 @@ var GraphNode = (function () {
     };
 
     return GraphNode;
-}());
+});
 
 
