@@ -51,7 +51,7 @@ the easiest starting point for you.
         require(["steller"], function (steller) {
             // Make some noise.
             var sh = new steller.Scheduler(new steller.AudioContext);
-            var ch = sh.models.Chime().connect();
+            var ch = sh.models.chime().connect();
             sh.play(sh.track([72,76,79].map(function (p) { return ch.note(p, 0.5, 0.5); })));
         });
     </script>

@@ -32,16 +32,16 @@ define(["./models/chime",
     return function maker(S, sh) {
 
         var models = sh.models || (sh.models = {});
-        models.Chime = chime(S, sh);
-        models.DC = dc(S, sh);
-        models.Noise = noise(S, sh);
-        models.Probe = probe(S, sh);
-        models.Mic = mic(S, sh);
-        models.Spectrum = spectrum(S, sh);
-        models.LoadSample = load_sample(S, sh);
-        models.Sample = sample(S, sh);
-        models.JSNode = jsnode(S, sh);
-        models.BufferQueue = buffer_queue(S, sh);
+        models.chime = chime(S, sh);
+        models.dc = dc(S, sh);
+        models.noise = noise(S, sh);
+        models.probe = probe(S, sh);
+        models.mic = mic(S, sh);
+        models.spectrum = spectrum(S, sh);
+        models.load_sample = load_sample(S, sh);
+        models.sample = sample(S, sh);
+        models.jsnode = jsnode(S, sh);
+        models.buffer_queue = buffer_queue(S, sh);
 
         return models;
     };
