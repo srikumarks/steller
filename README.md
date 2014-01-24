@@ -23,22 +23,14 @@ Examples -
 
 ## Usage
 
-### Direct inclusion
+### Using Bower
 
-Simply include the minified release version of the library to use it. The
-library is placed under the global namespace `org.anclab.steller`.
+You can install the latest requirejs version of steller as a [Bower] component.
+This is the preferred method now due to its ease.
 
-    <script src="http://sriku.org/lib/steller/steller.min.js"></script>
-    <script>
-        (function (steller) {
-            // Make some noise.
-            var sh = new steller.Scheduler(new steller.AudioContext);
-            var ch = sh.models.chime().connect();
-            sh.play(sh.track([72,76,79].map(function (p) { return ch.note(p, 0.5, 0.5); })));            
-        }(org.anclab.steller));
-    </script>
+    bower install steller
 
-You can host your own copy of the `steller.min.js` file too.
+[Bower]: http://bower.io/
 
 ### Using RequireJS
 
