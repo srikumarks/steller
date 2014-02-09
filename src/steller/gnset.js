@@ -198,7 +198,7 @@ define(['./eventable'], function (Eventable) {
         //
         // inputs is an array of [label, inputPinNumber] or label
         // outputs is an array of [label, outputPinNumber] or label
-        // exposedParams is an array of [nodeLabel, paramName]
+        // exposedParams is an array of [paramName, nodeLabel, optionalNodeParamName]
         GraphNodeSet.prototype.asNode = function (inputs, outputs, exposedParams) {
             var self = this;
 
@@ -218,11 +218,15 @@ define(['./eventable'], function (Eventable) {
                 }
             }
             
+            function labelToNode(label) {
+                return self._nodes[label].node;
+            }
+
             var sm = steller.SoundModel({}, inputs.map(labelToInputNode), outputs.map(labelToOutputNode));
 
             if (exposedParams) {
                 exposedParams.forEach(function (paramID) {
-                    sm[paramID[1]] = labelToNode(paramID[0])[paramID[1]];
+                    sm[paramID[0]] = labelToNode(paramID[1])[paramID[2] || paramID[0]];
                 });
             }
 
