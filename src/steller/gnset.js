@@ -196,18 +196,36 @@ define(['./eventable'], function (Eventable) {
         // function definition to load sound model definitions from a JSON
         // file, for example.
         //
+        // inputs is an array of [label, inputPinNumber] or label
+        // outputs is an array of [label, outputPinNumber] or label
         // exposedParams is an array of [nodeLabel, paramName]
         GraphNodeSet.prototype.asNode = function (inputs, outputs, exposedParams) {
             var self = this;
-            function labelToNode(label) {
-                return self._nodes[label].node;
+
+            function labelToInputNode(label) {
+                if (typeof label === 'string') {
+                    return self._nodes[label].node;
+                } else {
+                    return self._nodes[label[0]].node.inputs[label[1]];
+                }
             }
-            var sm = steller.SoundModel({}, inputs.map(labelToNode), outputs.map(labelToNode));
+
+            function labelToOutputNode(label) {
+                if (typeof label === 'string') {
+                    return self._nodes[label].node;
+                } else {
+                    return self._nodes[label[0]].node.outputs[label[1]];
+                }
+            }
+            
+            var sm = steller.SoundModel({}, inputs.map(labelToInputNode), outputs.map(labelToOutputNode));
+
             if (exposedParams) {
                 exposedParams.forEach(function (paramID) {
                     sm[paramID[1]] = labelToNode(paramID[0])[paramID[1]];
                 });
             }
+
             return sm;
         };
 
