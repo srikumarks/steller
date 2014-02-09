@@ -190,6 +190,27 @@ define(['./eventable'], function (Eventable) {
             return gnset;
         };
 
+        // Given arrays of labels that identify input and output nodes within
+        // the graph set, asNode returns a SoundModel that wraps the entire 
+        // subgraph. Note that asNode can itself be used within a constructor
+        // function definition to load sound model definitions from a JSON
+        // file, for example.
+        //
+        // exposedParams is an array of [nodeLabel, paramName]
+        GraphNodeSet.prototype.asNode = function (inputs, outputs, exposedParams) {
+            var self = this;
+            function labelToNode(label) {
+                return self._nodes[label].node;
+            }
+            var sm = steller.SoundModel({}, inputs.map(labelToNode), outputs.map(labelToNode));
+            if (exposedParams) {
+                exposedParams.forEach(function (paramID) {
+                    sm[paramID[1]] = labelToNode(paramID[0])[paramID[1]];
+                });
+            }
+            return sm;
+        };
+
         return GraphNodeSet;
     };
 
