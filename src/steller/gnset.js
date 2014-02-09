@@ -170,6 +170,7 @@ define(['./eventable'], function (Eventable) {
                 var spec = idspecmap[nodeid];
                 var setup = spec.setup;
                 var node = gnset.node.apply(gnset, setup[0]);
+                idmap[nodeid] = node._gnset_id;
                 for (var i = 1, step, args; i < setup.length; ++i) {
                     step = spec.setup[i];
                     if (step[0] === "connect") {
@@ -182,7 +183,6 @@ define(['./eventable'], function (Eventable) {
                         gnset.label(step[1], node);
                     }
                 }
-                idmap[nodeid] = node._gnset_id;
                 return node;
             }
 
