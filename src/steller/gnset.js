@@ -35,7 +35,7 @@ define(['./eventable'], function (Eventable) {
         }
 
         // See defineNodeTypes() below.
-        GraphNode.prototype.loadDefinitions = function (definitions) {
+        GraphNodeSet.prototype.loadDefinitions = function (definitions) {
             defineNodeTypes(this, definitions);
         };
 
