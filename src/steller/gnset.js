@@ -157,7 +157,7 @@ define(['./eventable'], function (Eventable) {
             var self = this;
             var json = this.save();
 
-            function serializePin(pinSpec) {
+            function encodePin(pinSpec) {
                 if (pinSpec.hasOwnProperty('pin')) {
                     return { node: pinSpec.node._gnset_id, pin: pinSpec.pin };
                 } else {
@@ -165,18 +165,20 @@ define(['./eventable'], function (Eventable) {
                 }
             }
 
-            json.type = 'SoundModel';
-            json.name = name;
-            json.inputs = inputs.map(serializePin);
-            json.outputs = outputs.map(serializePin);
-            json.params = params.map(function (param) {
+            function encodeParam(param) {
                 return {
                     name: param.name,
                     node: param.node,
                     nameInNode: param.nameInNode || param.name,
                     value: self._nodes[param.node][param.nameInNode || param.name].valueOf()
                 };
-            });
+            }
+
+            json.type = 'SoundModel';
+            json.name = name;
+            json.inputs = inputs.map(encodePin);
+            json.outputs = outputs.map(encodePin);
+            json.params = params.map(encodeParam);
 
             return json;
         };
@@ -189,10 +191,6 @@ define(['./eventable'], function (Eventable) {
         //
         GraphNodeSet.prototype.load = function (json) {
             return loaders[json.type](this, json);
-        };
-
-        GraphNodeSet.load = function (audioContext, json) {
-            return (new GraphNodeSet(audioContext)).load(json);
         };
 
         /////////////////////////
