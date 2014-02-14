@@ -39,7 +39,7 @@ define(['./eventable'], function (Eventable) {
         };
 
         // When building your node graph, always create nodes using the node
-        // method of the graph node set you want the node to be a part of. The
+        // method of the patch you want the node to be a part of. The
         // inputs/outputs must also be created this way. Any args beyond the
         // typename argument are passed on to the constructor.
         Patch.prototype.node = function (typename) {
@@ -80,7 +80,7 @@ define(['./eventable'], function (Eventable) {
 
         // You can optionally label nodes so that you can access
         // specific nodes after deserialization. The node must
-        // already be a part of the graph node set.
+        // already be a part of the patch.
         Patch.prototype.label = function (label, node) {
             console.assert(node._patch === this);
             if (this._nodes[label]) {
@@ -130,8 +130,8 @@ define(['./eventable'], function (Eventable) {
         };
 
         // Serializes the Patch as a SoundModel, which can then be
-        // loaded to instantiate a sound model instead of a graph node set.
-        // To turn a graph node set into a SoundModel, you identify input pins
+        // loaded to instantiate a sound model instead of a patch.
+        // To turn a patch into a SoundModel, you identify input pins
         // of component nodes that are to serve as inputs of the wrapped
         // model, output pins of component nodes that are to serve as outputs
         // of the wrapped model and the parameters of component models to expose
@@ -185,7 +185,7 @@ define(['./eventable'], function (Eventable) {
         // De-serialize a node graph from a JSON structure as produced by save() above;
         // You can load a new node set from a JSON like this -
         //      var patch = new Patch(audioContext, json);
-        // or you can intake a graph into an existing graph node set like this -
+        // or you can intake a graph into an existing patch like this -
         //      patch.load(json);
         //
         Patch.prototype.load = function (json) {
@@ -195,7 +195,7 @@ define(['./eventable'], function (Eventable) {
         /////////////////////////
         // Helpers
 
-        // When instantiating a graph node set, you need to first define
+        // When instantiating a patch, you need to first define
         // types of nodes by associating a name with their constructor
         // of the form `function (...) { .. return aSoundModel; }`
         // You can either do this by explicitly passing a constructor
