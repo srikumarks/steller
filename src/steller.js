@@ -135,8 +135,8 @@
 // To start with, the Steller API is exposed as a global "package" named
 // `org.anclab.steller`. So, for example, you access the `GraphNode` transformer 
 // as `org.anclab.steller.GraphNode`.
-define(["./steller/dbg", "./steller/nexttick", "./steller/eventable", "./steller/async_eventable", "./steller/graphnode", "./steller/gnset", "./steller/param", "./steller/scheduler", "./steller/clock", "./steller/periodictimer", "./steller/jsnodetimer", "./steller/ui", "./steller/util", "./steller/models"],
-function (GLOBAL, nextTick, Eventable, AsyncEventable, GraphNode, GraphNodeSet, Param, Scheduler, Clock, PeriodicTimer, JSNodeTimer, UI, Util, Models) {
+define(["./steller/dbg", "./steller/nexttick", "./steller/eventable", "./steller/async_eventable", "./steller/graphnode", "./steller/patch", "./steller/param", "./steller/scheduler", "./steller/clock", "./steller/periodictimer", "./steller/jsnodetimer", "./steller/ui", "./steller/util", "./steller/models"],
+function (GLOBAL, nextTick, Eventable, AsyncEventable, GraphNode, Patch, Param, Scheduler, Clock, PeriodicTimer, JSNodeTimer, UI, Util, Models) {
 
     var steller = {};
 
@@ -178,7 +178,7 @@ function (GLOBAL, nextTick, Eventable, AsyncEventable, GraphNode, GraphNodeSet, 
     steller.Eventable     = Eventable;
     steller.AsyncEventable  = AsyncEventable;
     steller.GraphNode     = GraphNode;
-    steller.GraphNodeSet  = GraphNodeSet(steller);
+    steller.Patch         = Patch(steller);
     steller.SoundModel    = SoundModel;
     steller.Param         = Param;
     steller.Scheduler     = Scheduler;

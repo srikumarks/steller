@@ -2,29 +2,28 @@ define(['./eventable'], function (Eventable) {
 
     return function (steller) {
 
-        // A graph node set helps keep track of a set of connected
-        // GraphNode objects so that the network can be saved and
-        // loaded across sessions. 
+        // A "patch" is a "graph node set" that helps keep track of a set of
+        // connected SoundModel (or GraphNode) objects so that the network can
+        // be saved and loaded across sessions. 
         //
-        // nodeTypes can either be another GraphNodeSet instance from
-        // which to inherit model constructor definitions, or is an
-        // argument that can be passed to loadDefinitions() (see below).
+        // nodeTypes can either be another Patch instance from which to inherit
+        // model constructor definitions, or is an argument that can be passed
+        // to loadDefinitions() (see below).
         //
-        // TODO: Optimize the saved node set to only those that
-        // are active. Also when saving as a Model, do not save
-        // any nodes that are not in the path between the given
-        // input and output nodes. This includes nodes from which
-        // connections come into the input nodes and nodes to 
+        // TODO: Optimize the saved node set to only those that are active.
+        // Also when saving as a Model, do not save any nodes that are not in
+        // the path between the given input and output nodes. This includes
+        // nodes from which connections come into the input nodes and nodes to
         // which connections go from the output nodes.
-        function GraphNodeSet(audioContext, nodeTypes) {
+        function Patch(audioContext, nodeTypes) {
             this._nextID = 1;
             this._nodes = {destination: {node: audioContext.destination, setup: []}};
             this._audioContext = audioContext;
             this._constructors = {};
-            audioContext.destination._gnset_id = "destination";
+            audioContext.destination._patch_id = "destination";
             if (nodeTypes) {
-                if (nodeTypes instanceof GraphNodeSet) {
-                    // Take a short cut when one GraphNodeSet is permitted
+                if (nodeTypes instanceof Patch) {
+                    // Take a short cut when one Patch is permitted
                     // to inherit definitions from another.
                     this._constructors = Object.create(nodeTypes._constructors);
                 } else {
@@ -35,7 +34,7 @@ define(['./eventable'], function (Eventable) {
         }
 
         // See defineNodeTypes() below.
-        GraphNodeSet.prototype.loadDefinitions = function (definitions) {
+        Patch.prototype.loadDefinitions = function (definitions) {
             defineNodeTypes(this, definitions);
         };
 
@@ -43,7 +42,7 @@ define(['./eventable'], function (Eventable) {
         // method of the graph node set you want the node to be a part of. The
         // inputs/outputs must also be created this way. Any args beyond the
         // typename argument are passed on to the constructor.
-        GraphNodeSet.prototype.node = function (typename) {
+        Patch.prototype.node = function (typename) {
             var self = this;
             var argv = Array.prototype.slice.call(arguments, 1);
             var cons = self._constructors[typename];
@@ -52,23 +51,23 @@ define(['./eventable'], function (Eventable) {
             var node = cons.apply(nodeObj, argv) || nodeObj;
             node.constructor = cons;
             argv.unshift(typename);
-            var setup = [{fn: 'node', args: argv}]; // The first setup specifies the gnset.node(..) call.
+            var setup = [{fn: 'node', args: argv}]; // The first setup specifies the patch.node(..) call.
             if (!(node.on && node.off && node.emit)) {
                 node = Eventable(node);
                 Eventable.observe(node, 'connect');
                 Eventable.observe(node, 'disconnect');
             }
             var id = self._nextID++;
-            node._gnset = self;
-            node._gnset_id = id;
-            node._gnset_typename = typename;
+            node._patch = self;
+            node._patch_id = id;
+            node._patch_typename = typename;
             self._nodes[id] = {node: node, setup: setup};
 
             // Keep track of connect/disconnect calls so they can 
             // be run again during de-serialization.
             node.on('connect', function () {
                 var args = Array.prototype.slice.call(arguments, 1);
-                args[0] = args[0]._gnset_id;
+                args[0] = args[0]._patch_id;
                 setup.push({fn: 'connect', args: args});
             });
             node.on('disconnect', function () {
@@ -82,25 +81,25 @@ define(['./eventable'], function (Eventable) {
         // You can optionally label nodes so that you can access
         // specific nodes after deserialization. The node must
         // already be a part of the graph node set.
-        GraphNodeSet.prototype.label = function (label, node) {
-            console.assert(node._gnset === this);
+        Patch.prototype.label = function (label, node) {
+            console.assert(node._patch === this);
             if (this._nodes[label]) {
-                console.warn('GraphNodeSet.label: Existing label "' + label + '" will be redefined.');
-                this._nodes[label]._gnset = null;
-                this._nodes[label]._gnset_id = null;
+                console.warn('Patch.label: Existing label "' + label + '" will be redefined.');
+                this._nodes[label]._patch = null;
+                this._nodes[label]._patch_id = null;
             }
-            if (label !== node._gnset_id) {
-                this._nodes[label] = this._nodes[node._gnset_id];
-                delete this._nodes[node._gnset_id];
+            if (label !== node._patch_id) {
+                this._nodes[label] = this._nodes[node._patch_id];
+                delete this._nodes[node._patch_id];
                 this._nodes[label].setup.push(['label', label]);
-                node._gnset_id = label;
+                node._patch_id = label;
             }
             return node;
         };
 
         // Get a named node. If the label doesn't exist, undefined
         // is returned.
-        GraphNodeSet.prototype.get = function (label) {
+        Patch.prototype.get = function (label) {
             var info = this._nodes[label];
             return info && info.node;
         };
@@ -116,10 +115,10 @@ define(['./eventable'], function (Eventable) {
         // A second optimization is that the setup sequence can be reduced
         // depending on the existence of disconnect calls. I just keep them
         // in the same sequence for simplicity.
-        GraphNodeSet.prototype.save = function () {
+        Patch.prototype.save = function () {
             var self = this;
             var json = {
-                type: 'GraphNodeSet',
+                type: 'Patch',
                 nodes: Object.keys(self._nodes).map(function (id) {
                     return {
                         id: id,
@@ -130,7 +129,7 @@ define(['./eventable'], function (Eventable) {
             return json;
         };
 
-        // Serializes the GraphNodeSet as a SoundModel, which can then be
+        // Serializes the Patch as a SoundModel, which can then be
         // loaded to instantiate a sound model instead of a graph node set.
         // To turn a graph node set into a SoundModel, you identify input pins
         // of component nodes that are to serve as inputs of the wrapped
@@ -146,7 +145,7 @@ define(['./eventable'], function (Eventable) {
         // params is an array of {name: paramName, node: nodeLabel, nameInNode: optionalNodeParamName} 
         // The current value of the parameters will be snapshotted into the
         // saved model.
-        GraphNodeSet.prototype.saveAsModel = function (name, inputs, outputs, params) {
+        Patch.prototype.saveAsModel = function (name, inputs, outputs, params) {
             // Perform some basic checks on the arguments.
             // Once we do this check here, it is basically guaranteed that
             // a subsequent load() call will succeed.
@@ -159,9 +158,9 @@ define(['./eventable'], function (Eventable) {
 
             function encodePin(pinSpec) {
                 if (pinSpec.hasOwnProperty('pin')) {
-                    return { node: pinSpec.node._gnset_id, pin: pinSpec.pin };
+                    return { node: pinSpec.node._patch_id, pin: pinSpec.pin };
                 } else {
-                    return { node: pinSpec.node._gnset_id };
+                    return { node: pinSpec.node._patch_id };
                 }
             }
 
@@ -185,11 +184,11 @@ define(['./eventable'], function (Eventable) {
 
         // De-serialize a node graph from a JSON structure as produced by save() above;
         // You can load a new node set from a JSON like this -
-        //      var gnset = new GraphNodeSet(audioContext, json);
+        //      var patch = new Patch(audioContext, json);
         // or you can intake a graph into an existing graph node set like this -
-        //      gnset.load(json);
+        //      patch.load(json);
         //
-        GraphNodeSet.prototype.load = function (json) {
+        Patch.prototype.load = function (json) {
             return loaders[json.type](this, json);
         };
 
@@ -243,9 +242,9 @@ define(['./eventable'], function (Eventable) {
 
         // Easier to use wrapper around defineNodeType for defining multiple
         // types in one call. `specs` is either an array of serialized models
-        // as produced by `saveAsModel()` or an object those keys give the
-        // type names and whose values give constructor functions (or serialized
-        // models).
+        // as produced by `saveAsModel()` or an object whose keys give the
+        // type names and whose values give either constructor functions or
+        // serialized models.
 
         function defineNodeTypes(self, specs) {
             if (specs.constructor === Array) {
@@ -262,10 +261,10 @@ define(['./eventable'], function (Eventable) {
         };
 
         // Loader functions for the type types of serialized data.
-        // A loader function is of the form function (aGraphNodeSet, json) { ... }
+        // A loader function is of the form function (aPatch, json) { ... }
         // and can return anything it wants.
         var loaders = {
-            GraphNodeSet: function (gnset, json) {
+            Patch: function (patch, json) {
                 var idmap = {destination: "destination"};
 
                 var idspecmap = {};
@@ -273,13 +272,13 @@ define(['./eventable'], function (Eventable) {
 
                 function setupNode(nodeid) {
                     if (idmap[nodeid]) {
-                        return gnset._nodes[idmap[nodeid]].node;
+                        return patch._nodes[idmap[nodeid]].node;
                     }
                     var spec = idspecmap[nodeid];
                     var setup = spec.setup;
                     console.assert(setup[0].fn === 'node');
-                    var node = gnset.node.apply(gnset, setup[0].args);
-                    idmap[nodeid] = node._gnset_id;
+                    var node = patch.node.apply(patch, setup[0].args);
+                    idmap[nodeid] = node._patch_id;
                     for (var i = 1, step, args; i < setup.length; ++i) {
                         var step = setup[i];
                         if (step.fn === "connect") {
@@ -289,18 +288,18 @@ define(['./eventable'], function (Eventable) {
                         } else if (step.fn === "disconnect") {
                             node.disconnect.apply(node, step.args);
                         } else if (step.fn === "label") {
-                            gnset.label(step.args[0], node);
+                            patch.label(step.args[0], node);
                         }
                     }
                     return node;
                 }
 
                 json.nodes.forEach(function (spec) { setupNode(spec.id); });
-                return gnset;
+                return patch;
             },
 
-            SoundModel: function (gnset, json) {
-                return asNode(loaders.GraphNodeSet(gnset, json), json.inputs, json.outputs, json.params);
+            SoundModel: function (patch, json) {
+                return asNode(loaders.Patch(patch, json), json.inputs, json.outputs, json.params);
             }
         };
 
@@ -308,19 +307,19 @@ define(['./eventable'], function (Eventable) {
         // Takes a SoundModel type JSON object created using saveAsModel().
         //
         // The return value is a constructor function that you can use
-        // with any GraphNodeSet to define a new model type. The argument
+        // with any Patch to define a new model type. The argument
         // to the constructor function is an object whose keys give 
         // parameter names and whose values give the values that the parameters
         // should be set to.
         //
         // The returned constructor has a 'json' property that contains
         // the serialized JSON form of the wrapped model.
-        function wrapModel(gnset, json) {
+        function wrapModel(patch, json) {
             console.assert(json.type === 'SoundModel');
 
             function soundModel(paramSettings) {
-                var gns = new GraphNodeSet(this.audioContext, gnset); // Borrow definitions from gnset.
-                var model = gns.load(soundModel.json);
+                var patch2 = new Patch(this.audioContext, patch); // Borrow definitions from patch.
+                var model = patch2.load(soundModel.json);
                 if (paramSettings) {
                     Object.keys(paramSettings).forEach(function (pname) {
                         model[pname].value = paramSettings[pname];
@@ -341,7 +340,7 @@ define(['./eventable'], function (Eventable) {
         // file, for example.
         //
         // For the specification of inputs, outputs and exposedParams
-        // arguments, see GraphNodeSet.prototype.saveAsModel above.
+        // arguments, see Patch.prototype.saveAsModel above.
         function asNode(self, inputs, outputs, exposedParams) {
 
             function labelToInputNode(label) {
@@ -376,12 +375,12 @@ define(['./eventable'], function (Eventable) {
                     throw new Error('Invalid pin identifier ' + spec);
                 }
                 var node = spec.node;
-                if (node._gnset !== self) {
+                if (node._patch !== self) {
                     throw new Error("Node doesn't belong to set.");
                 }
                 if (spec.hasOwnProperty('pin')) {
                     if (!node.inputs[spec.pin]) {
-                        throw new Error('Invalid input pin number ' + spec.pin + ' for node "' + spec.node._gnset_id + '". Node has ' + node.inputs.length + ' input pins.');
+                        throw new Error('Invalid input pin number ' + spec.pin + ' for node "' + spec.node._patch_id + '". Node has ' + node.inputs.length + ' input pins.');
                     }
                 }
             });
@@ -393,12 +392,12 @@ define(['./eventable'], function (Eventable) {
                     throw new Error('Invalid pin identifier ' + spec);
                 }
                 var node = spec.node;
-                if (node._gnset !== self) {
+                if (node._patch !== self) {
                     throw new Error("Node doesn't belong to set.");
                 }
                 if (spec.hasOwnProperty('pin')) {
                     if (!node.outputs[spec.pin]) {
-                        throw new Error('Invalid output pin number ' + spec.pin + ' for node "' + spec.node._gnset_id + '". Node has ' + node.outputs.length + ' output pins.');
+                        throw new Error('Invalid output pin number ' + spec.pin + ' for node "' + spec.node._patch_id + '". Node has ' + node.outputs.length + ' output pins.');
                     }
                 }
             });
@@ -421,7 +420,7 @@ define(['./eventable'], function (Eventable) {
             });        
         };
         
-        return GraphNodeSet;
+        return Patch;
     };
 
 });
