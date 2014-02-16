@@ -1153,6 +1153,128 @@ function Scheduler(audioContext, options) {
         };
     }
 
+    // One of the requests towards connecting steller's scheduler to a
+    // score is that it would be good to have a way to convert an object
+    // notation into a scheduler spec that can be played using sh.play().
+    //
+    // Towards this, I've now added a "specFromJSON" method to the scheduler
+    // that does such a transformation. 
+    //
+    // specFromJSON accepts an object and parses its key-value associations to
+    // determine which scheduler models to build. For example, if the
+    // object is of the form {track: [m1, m2, ..]}, then a "track" model
+    // is built and the sub-models m1, m2, .. are recursively parsed for 
+    // similar object properties.
+    //
+    // An additional "vocabulary" structure can be passed to "specFromJSON" to
+    // take care of keys that are not recognized using the scheduler's built-in
+    // vocabulary. This "vocabulary" is an object whose keys constitute the
+    // introduced vocabulary and whose values give functions that will be
+    // called to produce scheduler models. These functions are wrapped with
+    // some minimal metadata to indicate to specFromJSON how they should be
+    // used.
+    //
+    // To specify a vocabulary item as a function, provide an object
+    // value of the form {convertArgs: true, fn: theFunction}. The convertArgs
+    // property of this wrapper object is to tell specFromJSON to first recursively
+    // expand the arguments into models before passing them to the function.
+    // It's can be false too, in which case the recursion won't be performed.
+    //
+    // Note that fromJSON accepts more than just valid JSON since arguments
+    // to vocabulary can be non-JSON objects as well. The "JSON" is a indication
+    // in the name as to the purpose of this function - which is to de-serialize
+    // models.
+    //
+    // Within the vocabulary function, the object that is required to be
+    // transformed is available as "this", so that additional key-value
+    // arguments may be looked up.
+    //
+    // If you wish to indicate that a particular object should not be
+    // parsed and should be passed through as is, wrap it in a quote
+    // form using the "$" key like this - {$: anyObject}.
+    //
+    // Example:
+    //  Here is a new vocabulary called "majchord" that will play a 
+    //  major chord using the chime model, given a reference pitch number.
+    //
+    //  var ch = sh.models.chime().connect();
+    //  var vocab = {
+    //      majchord: {
+    //          convertArgs: false, // No need to convert pitchNumber and duration arguments.
+    //          fn: function (pitchNumber, duration) {
+    //              return sh.track([
+    //                  sh.spawn([
+    //                      ch.play(pitchNumber),
+    //                      ch.play(pitchNumber + 4),
+    //                      ch.play(pitchNumber + 7)
+    //                  ]),
+    //                  sh.delay(duration)
+    //              ]);
+    //          }
+    //      }
+    //  };
+    //  var majchord = sh.specFromJSON({track: [{majchord: [72, 1.0]}, {majchord: [74, 1.0]}]}, vocab);
+
+    var sh_vocab = {
+        delay:      {convertArgs: true, fn: delay},
+        loop:       {convertArgs: true, fn: loop},
+        loop_while: {convertArgs: true, fn: loop_while},
+        repeat:     {convertArgs: true, fn: repeat},
+        fork:       {convertArgs: true, fn: fork},
+        spawn:      {convertArgs: true, fn: spawn},
+        track:      {convertArgs: true, fn: track},
+        anim:       {convertArgs: true, fn: anim},
+        rate:       {convertArgs: true, fn: rate},
+        choice:     {convertArgs: true, fn: choice}
+    };
+
+    function specFromJSON(json, vocab) {
+        if (!json || json.constructor !== Object) {
+            return json;
+        }
+
+        // Get first key in object. Note that the object can
+        // have multiple keys and (afaik) all Javascript engines
+        // respect the order in which keys were inserted when
+        // enumerating keys.
+        var key = null;
+        for (key in json) { break; }
+
+        // Since modelFromJSON recursively transforms all
+        // objects, treating everyone as a scheduler model
+        // specifier, we need a way to tell the parser
+        // "don't touch this". You can pass through any
+        // value untouched by wrapping it into a quote
+        // form which looks like {$: anyObject}.
+        if (key === '$') {
+            return json.$;
+        }
+
+        var impl = (vocab && vocab[key]) || sh_vocab[key];
+        if (!impl) { throw new Error('Unknown vocabulary : ' + key); }
+
+        var args = json[key], keys;
+        if (args.constructor === Array) {
+            // Recursively process all JSON object forms.
+            if (impl.convertArgs) {
+                args = args.map(function (arg) { return specFromJSON(arg, vocab); });
+            }
+        } else if (args.constructor === Object) {
+            args = [impl.convertArgs ? fromJSON(args, vocab) : args];
+        } else {
+            args = [args]; // Solo argument.
+        }
+
+        // The vocabulary spec is expected to be a function that can be applied with the
+        // json as the "this" and the arguments array as normal function arguments.
+
+        if (impl.fn) {
+            return impl.fn.apply(json, args);
+        }
+        
+        throw new Error('Bad vocabulary specification');
+    }
+
     self.audioContext   = audioContext;
     self.update         = scheduleUpdate;
     self.perform        = perform;
@@ -1180,6 +1302,7 @@ function Scheduler(audioContext, options) {
     self.sync           = sync;
     self.gate           = gate;
     self.stats          = stats;
+    self.specFromJSON   = specFromJSON;
 
     // Start the scheduler by default. I decided to do this because
     // so far on many occasions I've spent considerable time in 
