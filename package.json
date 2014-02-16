@@ -1,0 +1,25 @@
+{
+  "name": "steller",
+  "main": "src/steller",
+  "version": "0.4.0",
+  "keywords": [
+    "Web Audio API",
+    "Sound models",
+    "Scheduler"
+  ],
+  "licenses": [{
+      "type": "LGPLv3",
+      "url": "http://opensource.org/licenses/LGPL-3.0"
+  }],
+  "maintainers": [{
+      "name": "Srikumar K. S.",
+      "web": "http://sriku.org"
+  }],
+  "repositories": [{
+      "type": "git",
+      "url": "https://github.com/srikumarks/steller.git"
+  }],
+  "dependencies": {
+    "requirejs": "~2.1.10"
+  }  
+}
