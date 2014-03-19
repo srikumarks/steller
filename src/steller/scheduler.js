@@ -1,5 +1,9 @@
-define(["./queue", "./param", "./periodictimer", "./jsnodetimer", "./clock", "./util"],
-function (Queue, Param, PeriodicTimer, JSNodeTimer, Clock, Util) {
+var Queue = require('./queue'),
+    Param = require('./param'),
+    PeriodicTimer = require('./periodictimer'),
+    JSNodeTimer = require('./jsnodetimer'),
+    Clock = require('./clock'),
+    Util = require('./util');
 
 //
 // ## Scheduler
@@ -1271,7 +1275,7 @@ function Scheduler(audioContext, options) {
         if (impl.fn) {
             return impl.fn.apply(json, args);
         }
-        
+
         throw new Error('Bad vocabulary specification');
     }
 
@@ -1326,5 +1330,4 @@ function Scheduler(audioContext, options) {
     return self;
 };
 
-return Scheduler;
-});
+module.exports = Scheduler;

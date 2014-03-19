@@ -25,89 +25,88 @@
 // a measurement of setInterval in the browser (Chrome) - 
 //      {"N":1500,"dt":10,"mean":-687.63,"min":-1381,"max":-1,"deviation":402.51}
 //
-define(["./util"], function (Util) {
+var Util = require('./util');
 
-    function PeriodicTimer(callback, precision_ms) {
+function PeriodicTimer(callback, precision_ms) {
 
-        var requestAnimationFrame = Util.getRequestAnimationFrameFunc();
+    var requestAnimationFrame = Util.getRequestAnimationFrameFunc();
 
-        if (Util.detectBrowserEnv() && !requestAnimationFrame) {
-            throw new Error('PeriodicTimer needs requestAnimationFrame support. Use a sufficiently modern browser.');
-        }
-
-        var self = this;
-        var running = false;
-        var intervalID;
-
-        if (precision_ms === undefined) {
-            precision_ms = 15; // Default to about 60fps just like requestAnimationFrame.
-        } else {
-            // If we're in a browser environment, no point trying to use
-            // setInterval based code because the performance is as bad
-            // as with setTimeout anyway -
-            //      {"N":1500,"dt":10,"mean":-687.63,"min":-1381,"max":-1,"deviation":402.51}
-            precision_ms = Math.min(Math.max(Util.detectBrowserEnv() ? 15 : 1, precision_ms), 33);
-        }
-
-        if (requestAnimationFrame && precision_ms >= 12) {
-            self.start = function () {
-                if (!running) {
-                    running = true;
-                    intervalID = requestAnimationFrame(function () {
-                        if (running) {
-                            intervalID = requestAnimationFrame(arguments.callee);
-                            callback();
-                        } else {
-                            intervalID = undefined;
-                        }
-                    });
-                }
-            };
-
-            self.stop = function () {
-                running = false;
-                if (intervalID) {
-                    cancelAnimationFrame(intervalID);
-                    intervalID = undefined;
-                }
-            };
-        } else {
-            self.start = function () {
-                if (!running) {
-                    running = true;
-                    intervalID = setInterval(callback, 1);
-                }
-            };
-
-            self.stop = function () {
-                if (running) {
-                    running = false;
-                    clearInterval(intervalID);
-                    intervalID = undefined;
-                }
-            };
-        }
-
-        self.__defineGetter__('running', function () { return running; });
-        self.__defineSetter__('running', function (state) {
-            if (state) {
-                self.start();
-            } else {
-                self.stop();
-            }
-            return running;
-        });
-
-        WARNIF(precision_ms <= 5, "High precision timing used. May impact performance.");
-
-        // Indicate a usable compute ahead interval based on how
-        // frequently the callbacks happen;
-        self.computeAheadInterval_secs = (Math.round(precision_ms * 3.333)) / 1000;
-
-        return self;
+    if (Util.detectBrowserEnv() && !requestAnimationFrame) {
+        throw new Error('PeriodicTimer needs requestAnimationFrame support. Use a sufficiently modern browser.');
     }
 
+    var self = this;
+    var running = false;
+    var intervalID;
 
-    return PeriodicTimer;
-});
+    if (precision_ms === undefined) {
+        precision_ms = 15; // Default to about 60fps just like requestAnimationFrame.
+    } else {
+        // If we're in a browser environment, no point trying to use
+        // setInterval based code because the performance is as bad
+        // as with setTimeout anyway -
+        //      {"N":1500,"dt":10,"mean":-687.63,"min":-1381,"max":-1,"deviation":402.51}
+        precision_ms = Math.min(Math.max(Util.detectBrowserEnv() ? 15 : 1, precision_ms), 33);
+    }
+
+    if (requestAnimationFrame && precision_ms >= 12) {
+        self.start = function () {
+            if (!running) {
+                running = true;
+                intervalID = requestAnimationFrame(function () {
+                    if (running) {
+                        intervalID = requestAnimationFrame(arguments.callee);
+                        callback();
+                    } else {
+                        intervalID = undefined;
+                    }
+                });
+            }
+        };
+
+        self.stop = function () {
+            running = false;
+            if (intervalID) {
+                cancelAnimationFrame(intervalID);
+                intervalID = undefined;
+            }
+        };
+    } else {
+        self.start = function () {
+            if (!running) {
+                running = true;
+                intervalID = setInterval(callback, 1);
+            }
+        };
+
+        self.stop = function () {
+            if (running) {
+                running = false;
+                clearInterval(intervalID);
+                intervalID = undefined;
+            }
+        };
+    }
+
+    self.__defineGetter__('running', function () { return running; });
+    self.__defineSetter__('running', function (state) {
+        if (state) {
+            self.start();
+        } else {
+            self.stop();
+        }
+        return running;
+    });
+
+    WARNIF(precision_ms <= 5, "High precision timing used. May impact performance.");
+
+    // Indicate a usable compute ahead interval based on how
+    // frequently the callbacks happen;
+    self.computeAheadInterval_secs = (Math.round(precision_ms * 3.333)) / 1000;
+
+    return self;
+}
+
+
+module.exports = PeriodicTimer;
 

@@ -31,61 +31,59 @@
 //              ASSERT(status === 1);
 //          }
 //      });
-define(function () {
-    return function installer(S, sh) {
-        var AC = sh.audioContext;
+module.exports = function installer(S, sh) {
+    var AC = sh.audioContext;
 
-        function getUserMedia(dictionary, callback, errback) {
-            try {
-                navigator.webkitGetUserMedia(dictionary, callback, errback);
-            } catch (e) {
-                errback(e);
-            }
+    function getUserMedia(dictionary, callback, errback) {
+        try {
+            navigator.webkitGetUserMedia(dictionary, callback, errback);
+        } catch (e) {
+            errback(e);
+        }
+    }
+
+    function setupMic(micModel, stream) {
+        if (!micSource) {
+            ASSERT(stream);
+            micSource = AC.createMediaStreamSource(stream);
         }
 
-        function setupMic(micModel, stream) {
-            if (!micSource) {
-                ASSERT(stream);
-                micSource = AC.createMediaStreamSource(stream);
-            }
+        micSource.connect(micModel.outputs[0]);
+        micModel.error = null;
+        micModel.ready.value = 1;
+    }
 
-            micSource.connect(micModel.outputs[0]);
-            micModel.error = null;
-            micModel.ready.value = 1;
+    var micSource; // Make only one mic source node per context.
+
+    return function mic() {
+        var micOut = AC.createGainNode();
+        var micModel = SoundModel({}, [], [micOut]);
+
+        // 'ready' parameter = 1 indicates availability of mic,
+        // -1 indicates error (in which case you can look at micModel.error)
+        // and 0 indicates initialization in progress.
+        micModel.ready = S.Param({min: -1, max: 1, value: 0});
+
+        // Expose a gain parameter so different parts of the graph can use
+        // different gains.
+        micModel.gain = S.Param({min: 0, max: 1, audioParam: micOut.gain});
+
+        if (micSource) {
+            setupMic(micModel, null);
+        } else {
+            getUserMedia({audio: true},
+                    function (stream) {
+                        return setupMic(micModel, stream);
+                    },
+                    function (e) {
+                        micModel.error = e;
+                        micModel.gain.value = 0; // Mute it.
+                        micModel.ready.value = -1;
+                    });
         }
 
-        var micSource; // Make only one mic source node per context.
-
-        return function mic() {
-            var micOut = AC.createGainNode();
-            var micModel = SoundModel({}, [], [micOut]);
-
-            // 'ready' parameter = 1 indicates availability of mic,
-            // -1 indicates error (in which case you can look at micModel.error)
-            // and 0 indicates initialization in progress.
-            micModel.ready = S.Param({min: -1, max: 1, value: 0});
-
-            // Expose a gain parameter so different parts of the graph can use
-            // different gains.
-            micModel.gain = S.Param({min: 0, max: 1, audioParam: micOut.gain});
-
-            if (micSource) {
-                setupMic(micModel, null);
-            } else {
-                getUserMedia({audio: true},
-                        function (stream) {
-                            return setupMic(micModel, stream);
-                        },
-                        function (e) {
-                            micModel.error = e;
-                            micModel.gain.value = 0; // Mute it.
-                            micModel.ready.value = -1;
-                        });
-            }
-
-            return micModel;
-        };
+        return micModel;
     };
-});
+};
 
 

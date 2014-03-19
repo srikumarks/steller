@@ -17,33 +17,30 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
 // Must've loaded steller.js before this.
-define(["./models/chime",
-        "./models/dc",
-        "./models/noise",
-        "./models/probe",
-        "./models/mic",
-        "./models/spectrum",
-        "./models/load_sample",
-        "./models/sample",
-        "./models/jsnode",
-        "./models/buffer_queue"],
-        function (chime, dc, noise, probe, mic, spectrum, load_sample, sample, jsnode, buffer_queue) {
+var chime = require('./models/chime'),
+    dc = require('./models/dc'),
+    noise = require('./models/noise'),
+    probe = require('./models/probe'),
+    mic = require('./models/mic'),
+    spectrum = require('./models/spectrum'),
+    load_sample = require('./models/load_sample'),
+    sample = require('./models/sample'),
+    jsnode = require('./models/jsnode'),
+    buffer_queue = require('./models/buffer_queue');
 
-    return function maker(S, sh) {
+module.exports = function maker(S, sh) {
 
-        var models = sh.models || (sh.models = {});
-        models.chime = chime(S, sh);
-        models.dc = dc(S, sh);
-        models.noise = noise(S, sh);
-        models.probe = probe(S, sh);
-        models.mic = mic(S, sh);
-        models.spectrum = spectrum(S, sh);
-        models.load_sample = load_sample(S, sh);
-        models.sample = sample(S, sh);
-        models.jsnode = jsnode(S, sh);
-        models.buffer_queue = buffer_queue(S, sh);
+    var models = sh.models || (sh.models = {});
+    models.chime = chime(S, sh);
+    models.dc = dc(S, sh);
+    models.noise = noise(S, sh);
+    models.probe = probe(S, sh);
+    models.mic = mic(S, sh);
+    models.spectrum = spectrum(S, sh);
+    models.load_sample = load_sample(S, sh);
+    models.sample = sample(S, sh);
+    models.jsnode = jsnode(S, sh);
+    models.buffer_queue = buffer_queue(S, sh);
 
-        return models;
-    };
-
-});
+    return models;
+};

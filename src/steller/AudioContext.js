@@ -38,102 +38,100 @@
  * be available immediately even if you're working with a dated browser
  * implementation.
  */
-define(function () {
-    var GLOBAL = this;
+var GLOBAL = (function () { return this; }());
 
-    function alias(obj, oldName, newName) {
-        obj[newName] = obj[newName] || obj[oldName];
-        supportDeprecated(obj, oldName, newName);
-    }
+function alias(obj, oldName, newName) {
+    obj[newName] = obj[newName] || obj[oldName];
+    supportDeprecated(obj, oldName, newName);
+}
 
-    function supportDeprecated(obj, oldName, newName) {
-        var oldMethod = obj[oldName];
-        obj[oldName] = function () {
-            console.warn('Web Audio API: Deprecated name %s used. Use %s instead.', oldName, newName);
-            obj[oldName] = oldMethod || obj[newName];
-            return oldMethod.apply(this, arguments);
-        };
-    }
-
-    GLOBAL.AudioContext = (function (AC) {
-        'use strict';
-
-        if (!AC) {
-            console.warn('Web Audio API not supported on this client.');
-            return undefined;
-        }
-
-        return function AudioContext() {
-            var ac, AudioParam, AudioParamOld, BufferSource, Oscillator;
-
-            if (arguments.length === 0) {
-                // Realtime audio context.
-                ac = new AC;
-            } else if (arguments.length === 3) {
-                // Offline audio context.
-                ac = new AC(arguments[0], arguments[1], arguments[2]);
-            } else {
-                throw new Error('Invalid instantiation of AudioContext');
-            }
-
-            alias(ac, 'createGainNode', 'createGain');
-            alias(ac, 'createDelayNode', 'createDelay');
-            alias(ac, 'createJavaScriptNode', 'createScriptProcessor');
-            alias(ac, 'createWaveTable', 'createPeriodicWave');
-
-            // Find out the AudioParam prototype object.
-            // Some older implementations keep an additional empty
-            // interface for the gain parameter.
-            AudioParam = Object.getPrototypeOf(ac.createGain().gain);
-            AudioParamOld = Object.getPrototypeOf(AudioParam);
-            if (AudioParamOld.setValueAtTime) {
-                // Checking for the presence of setValueAtTime to find whether
-                // it is the right prototype class is, I expect, more robust than
-                // checking whether the class name is this or that. - Kumar
-                console.warn('Implementation uses extra dummy interface for AudioGainParam. This will be removed.');
-                AudioParam = AudioParamOld;
-            }
-
-            alias(AudioParam, 'setTargetValueAtTime', 'setTargetAtTime');
-
-            // For BufferSource node, we need to also account for noteGrainOn.
-            BufferSource = Object.getPrototypeOf(ac.createBufferSource());
-            alias(BufferSource, 'noteOff', 'stop');
-            if (BufferSource.start) {
-                supportDeprecated(BufferSource, 'noteOn', 'start');
-                supportDeprecated(BufferSource, 'noteGrainOn', 'start');
-            } else {
-                console.warn('Web Audio API: Only BufferSource.note[Grain]On available. Providing BufferSource.start.');
-                BufferSource.start = function start(when, offset, duration) {
-                    switch (arguments.length) {
-                        case 1: return this.noteOn(when);
-                        case 3: return this.noteGrainOn(when, offset, duration);
-                        default: throw new Error('Invalid arguments to BufferSource.start');
-                    }
-                };
-                supportDeprecated(BufferSource, 'noteOn', 'start');
-                supportDeprecated(BufferSource, 'noteOff', 'stop');
-            }
-
-
-            Oscillator = Object.getPrototypeOf(ac.createOscillator());
-            alias(Oscillator, 'noteOn', 'start');
-            alias(Oscillator, 'noteOff', 'stop');
-            alias(Oscillator, 'setWaveTable', 'setPeriodicWave');
-
-            return ac;
-        };
-    }(GLOBAL.AudioContext || GLOBAL.webkitAudioContext));
-
-    GLOBAL.webkitAudioContext = function AudioContext() {
-        console.warn('Use "new AudioContext" instead of "new webkitAudioContext".');
-        switch (arguments.length) {
-            case 0: return new GLOBAL.AudioContext();
-            case 3: return new GLOBAL.AudioContext(arguments[0], arguments[1], arguments[2]);
-            default: throw new Error('Invalid AudioContext creation');
-        }
+function supportDeprecated(obj, oldName, newName) {
+    var oldMethod = obj[oldName];
+    obj[oldName] = function () {
+        console.warn('Web Audio API: Deprecated name %s used. Use %s instead.', oldName, newName);
+        obj[oldName] = oldMethod || obj[newName];
+        return oldMethod.apply(this, arguments);
     };
+}
 
-    return GLOBAL.AudioContext;
-});
+GLOBAL.AudioContext = (function (AC) {
+    'use strict';
+
+    if (!AC) {
+        console.warn('Web Audio API not supported on this client.');
+        return undefined;
+    }
+
+    return function AudioContext() {
+        var ac, AudioParam, AudioParamOld, BufferSource, Oscillator;
+
+        if (arguments.length === 0) {
+            // Realtime audio context.
+            ac = new AC;
+        } else if (arguments.length === 3) {
+            // Offline audio context.
+            ac = new AC(arguments[0], arguments[1], arguments[2]);
+        } else {
+            throw new Error('Invalid instantiation of AudioContext');
+        }
+
+        alias(ac, 'createGainNode', 'createGain');
+        alias(ac, 'createDelayNode', 'createDelay');
+        alias(ac, 'createJavaScriptNode', 'createScriptProcessor');
+        alias(ac, 'createWaveTable', 'createPeriodicWave');
+
+        // Find out the AudioParam prototype object.
+        // Some older implementations keep an additional empty
+        // interface for the gain parameter.
+        AudioParam = Object.getPrototypeOf(ac.createGain().gain);
+        AudioParamOld = Object.getPrototypeOf(AudioParam);
+        if (AudioParamOld.setValueAtTime) {
+            // Checking for the presence of setValueAtTime to find whether
+            // it is the right prototype class is, I expect, more robust than
+            // checking whether the class name is this or that. - Kumar
+            console.warn('Implementation uses extra dummy interface for AudioGainParam. This will be removed.');
+            AudioParam = AudioParamOld;
+        }
+
+        alias(AudioParam, 'setTargetValueAtTime', 'setTargetAtTime');
+
+        // For BufferSource node, we need to also account for noteGrainOn.
+        BufferSource = Object.getPrototypeOf(ac.createBufferSource());
+        alias(BufferSource, 'noteOff', 'stop');
+        if (BufferSource.start) {
+            supportDeprecated(BufferSource, 'noteOn', 'start');
+            supportDeprecated(BufferSource, 'noteGrainOn', 'start');
+        } else {
+            console.warn('Web Audio API: Only BufferSource.note[Grain]On available. Providing BufferSource.start.');
+            BufferSource.start = function start(when, offset, duration) {
+                switch (arguments.length) {
+                    case 1: return this.noteOn(when);
+                    case 3: return this.noteGrainOn(when, offset, duration);
+                    default: throw new Error('Invalid arguments to BufferSource.start');
+                }
+            };
+            supportDeprecated(BufferSource, 'noteOn', 'start');
+            supportDeprecated(BufferSource, 'noteOff', 'stop');
+        }
+
+
+        Oscillator = Object.getPrototypeOf(ac.createOscillator());
+        alias(Oscillator, 'noteOn', 'start');
+        alias(Oscillator, 'noteOff', 'stop');
+        alias(Oscillator, 'setWaveTable', 'setPeriodicWave');
+
+        return ac;
+    };
+}(GLOBAL.AudioContext || GLOBAL.webkitAudioContext));
+
+GLOBAL.webkitAudioContext = function AudioContext() {
+    console.warn('Use "new AudioContext" instead of "new webkitAudioContext".');
+    switch (arguments.length) {
+        case 0: return new GLOBAL.AudioContext();
+        case 3: return new GLOBAL.AudioContext(arguments[0], arguments[1], arguments[2]);
+        default: throw new Error('Invalid AudioContext creation');
+    }
+};
+
+module.exports = GLOBAL.AudioContext;
 

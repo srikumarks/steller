@@ -10,61 +10,59 @@
 //
 // You must run the .start action to start grabbing. You can stop 
 // using the .stop action.
-define (function () {
-    return function installer(S, sh) {
-        var AC = sh.audioContext;
-        return function spectrum(N, smoothingFactor) {
-            N = N || 1024;
+module.exports = function installer(S, sh) {
+    var AC = sh.audioContext;
+    return function spectrum(N, smoothingFactor) {
+        N = N || 1024;
 
-            var analyser = AC.createAnalyser();
-            analyser.fftSize = N * 2;
-            analyser.frequencyBinCount = N;
-            analyser.smoothingTimeConstant = arguments.length < 2 ? 0.1 : smoothingFactor;
-            // Note that the analyser doesn't need to be connected to AC.destination.
+        var analyser = AC.createAnalyser();
+        analyser.fftSize = N * 2;
+        analyser.frequencyBinCount = N;
+        analyser.smoothingTimeConstant = arguments.length < 2 ? 0.1 : smoothingFactor;
+        // Note that the analyser doesn't need to be connected to AC.destination.
 
-            var model = S.SoundModel({}, [analyser], []);
-            model.bins = new Float32Array(N);
-            model.freqs = new Float32Array(N);
-            model.time = S.Param({min: 0, max: 1e9, value: 0});
+        var model = S.SoundModel({}, [analyser], []);
+        model.bins = new Float32Array(N);
+        model.freqs = new Float32Array(N);
+        model.time = S.Param({min: 0, max: 1e9, value: 0});
 
-            // Compute the frequencies of the bins.
-            for (var i = 0; i < N; ++i) {
-                model.freqs[i] = i * AC.sampleRate / analyser.fftSize;
-            }
+        // Compute the frequencies of the bins.
+        for (var i = 0; i < N; ++i) {
+            model.freqs[i] = i * AC.sampleRate / analyser.fftSize;
+        }
 
-            var grabRequest;
+        var grabRequest;
 
-            function update() {
-                if (grabRequest) {
-                    var ts = AC.currentTime;
-                    analyser.getFloatFrequencyData(model.bins);
+        function update() {
+            if (grabRequest) {
+                var ts = AC.currentTime;
+                analyser.getFloatFrequencyData(model.bins);
 
-                    // Convert from decibels to power.
-                    for (var i = 0, bins = model.bins, N = bins.length; i < N; ++i) {
-                        bins[i] = Math.pow(10, bins[i] / 20);
-                    }
-
-                    grabRequest = S.requestAnimationFrame(update);
-
-                    // Update the time stamp. If there are watchers installed
-                    // on model.time, they'll now be notified of the frame grab.
-                    model.time.value = ts;
+                // Convert from decibels to power.
+                for (var i = 0, bins = model.bins, N = bins.length; i < N; ++i) {
+                    bins[i] = Math.pow(10, bins[i] / 20);
                 }
+
+                grabRequest = S.requestAnimationFrame(update);
+
+                // Update the time stamp. If there are watchers installed
+                // on model.time, they'll now be notified of the frame grab.
+                model.time.value = ts;
             }
+        }
 
-            model.start = sh.fire(function () {
-                if (!grabRequest) {
-                    grabRequest = S.requestAnimationFrame(update);
-                }
-            });
+        model.start = sh.fire(function () {
+            if (!grabRequest) {
+                grabRequest = S.requestAnimationFrame(update);
+            }
+        });
 
-            model.stop = sh.fire(function () {
-                grabRequest = undefined;
-            });
+        model.stop = sh.fire(function () {
+            grabRequest = undefined;
+        });
 
-            return model;
-        };
+        return model;
     };
-});
+};
 
 

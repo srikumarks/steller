@@ -135,69 +135,80 @@
 // To start with, the Steller API is exposed as a global "package" named
 // `org.anclab.steller`. So, for example, you access the `GraphNode` transformer 
 // as `org.anclab.steller.GraphNode`.
-define(["./steller/dbg", "./steller/nexttick", "./steller/eventable", "./steller/async_eventable", "./steller/graphnode", "./steller/patch", "./steller/param", "./steller/scheduler", "./steller/clock", "./steller/periodictimer", "./steller/jsnodetimer", "./steller/ui", "./steller/util", "./steller/models"],
-function (GLOBAL, nextTick, Eventable, AsyncEventable, GraphNode, Patch, Param, Scheduler, Clock, PeriodicTimer, JSNodeTimer, UI, Util, Models) {
+var GLOBAL = require('./steller/dbg'),
+    nextTick = require('./steller/nexttick'),
+    Eventable = require('./steller/eventable'),
+    AsyncEventable = require('./steller/async_eventable'),
+    GraphNode = require('./steller/graphnode'),
+    Patch = require('./steller/patch'),
+    Param = require('./steller/param'),
+    Scheduler = require('./steller/scheduler'),
+    Clock = require('./steller/clock'),
+    PeriodicTimer = require('./steller/periodictimer'),
+    JSNodeTimer = require('./steller/jsnodetimer'),
+    UI = require('./steller/ui'),
+    Util = require('./steller/util'),
+    Models = require('./steller/models');
 
-    var steller = {};
+var steller = {};
 
-    //
-    // ## SoundModel
-    //
-    // A "sound model" is a graph node with support for parameters.
-    // It is also "eventable" in that you can install watchers
-    // for events that are "emit"ed, perhaps by internal
-    // processes (see Eventable).
-    //
-    // `obj` is the object to turn into a "sound model"
-    // 
-    // `inputs` is the array of graph nodes (or sound models) that constitute
-    // the input for this model.
-    //
-    // `outputs` is the array of graph nodes (or sound models) that constitute
-    // the output for this model.
-    //
-    // By making the inputs and outputs explicit, we can make
-    // sound models whose output can be piped through other models
-    // before it hits the audio context's destination.
-    //
-    // Sound models are scheduled using the Scheduler (org.anclab.steller.Scheduler)
-    //
-    function SoundModel(obj, inputs, outputs) {
-        var node = Eventable(GraphNode(obj, inputs, outputs));
-        
-        // Patch connect/disconnect methods to emit events
-        // after the action is complete, so that other things
-        // such as UI, cleanup, whatever can react to them.
-        Eventable.observe(node, 'connect');
-        Eventable.observe(node, 'disconnect');
+//
+// ## SoundModel
+//
+// A "sound model" is a graph node with support for parameters.
+// It is also "eventable" in that you can install watchers
+// for events that are "emit"ed, perhaps by internal
+// processes (see Eventable).
+//
+// `obj` is the object to turn into a "sound model"
+// 
+// `inputs` is the array of graph nodes (or sound models) that constitute
+// the input for this model.
+//
+// `outputs` is the array of graph nodes (or sound models) that constitute
+// the output for this model.
+//
+// By making the inputs and outputs explicit, we can make
+// sound models whose output can be piped through other models
+// before it hits the audio context's destination.
+//
+// Sound models are scheduled using the Scheduler (org.anclab.steller.Scheduler)
+//
+function SoundModel(obj, inputs, outputs) {
+    var node = Eventable(GraphNode(obj, inputs, outputs));
 
-        return node;
-    }
+    // Patch connect/disconnect methods to emit events
+    // after the action is complete, so that other things
+    // such as UI, cleanup, whatever can react to them.
+    Eventable.observe(node, 'connect');
+    Eventable.observe(node, 'disconnect');
 
-    steller.nextTick      = nextTick;
-    steller.Eventable     = Eventable;
-    steller.AsyncEventable  = AsyncEventable;
-    steller.GraphNode     = GraphNode;
-    steller.Patch         = Patch(steller);
-    steller.SoundModel    = SoundModel;
-    steller.Param         = Param;
-    steller.Scheduler     = Scheduler;
-    steller.Clock         = Clock;
-    steller.PeriodicTimer = PeriodicTimer;
-    steller.JSNodeTimer   = JSNodeTimer;
-    steller.UI            = UI;
-    steller.Util          = Util;
+    return node;
+}
 
-    // Expose the ones that we use.
-    steller.requestAnimationFrame = (function (raf) {
-        return function (func) {
-            return raf(func);   // This is so that steller.requestAnimationFrame
-                                // can be called with anything as "this".
-        };
-    }(Util.getRequestAnimationFrameFunc()));
-    steller.AudioContext = Util.getAudioContext();
+steller.nextTick      = nextTick;
+steller.Eventable     = Eventable;
+steller.AsyncEventable  = AsyncEventable;
+steller.GraphNode     = GraphNode;
+steller.Patch         = Patch(steller);
+steller.SoundModel    = SoundModel;
+steller.Param         = Param;
+steller.Scheduler     = Scheduler;
+steller.Clock         = Clock;
+steller.PeriodicTimer = PeriodicTimer;
+steller.JSNodeTimer   = JSNodeTimer;
+steller.UI            = UI;
+steller.Util          = Util;
 
-    steller.Scheduler.Models = function (sh) { Models(steller, sh); };
+// Expose the ones that we use.
+steller.requestAnimationFrame = (function (raf) {
+    return function (func) {
+        return raf(func);   // This is so that steller.requestAnimationFrame
+        // can be called with anything as "this".
+    };
+}(Util.getRequestAnimationFrameFunc()));
+steller.AudioContext = Util.getAudioContext();
 
-    return steller;
-});
+steller.Scheduler.Models = function (sh) { Models(steller, sh); };
+
+module.exports = steller;
