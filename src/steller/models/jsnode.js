@@ -62,7 +62,7 @@ module.exports = function installer(S, sh) {
         // Map inputs to merger inputs numbered [0, spec.numInputs)
         // Map params to merger inputs numbered [spec.numInputs, spec.numInputs + numParams)
         // Map outputs to splitter outputs numbered [0, spec.numOutputs)
-        var numParams = spec.audioParams ? spec.audioParams.length : 0;
+        var numParams = spec.audioParams ? Object.keys(spec.audioParams).length : 0;
         var numberOfInputs = spec.numberOfInputs || 0;
         var numberOfOutputs = spec.numberOfOutputs || 1;
         var numInputs = numberOfInputs + numParams;
@@ -180,7 +180,7 @@ module.exports = function installer(S, sh) {
 
         // Make a dc model to drive the gain nodes corresponding to
         // audio parameters.
-        var dc = paramNames.length > 0 ? models.dc(1) : undefined;
+        var dc = paramNames.length > 0 ? sh.models.dc(1) : undefined;
         paramNames.forEach(function (pn, i) {
             var node = inputNodes[numberOfInputs + i];
             sm[pn] = node.gain;
