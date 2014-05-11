@@ -51,7 +51,7 @@ define(function () {
         obj[oldName] = function () {
             console.warn('Web Audio API: Deprecated name %s used. Use %s instead.', oldName, newName);
             obj[oldName] = oldMethod || obj[newName];
-            return oldMethod.apply(this, arguments);
+            return obj[oldName].apply(this, arguments);
         };
     }
 
