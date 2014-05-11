@@ -198,7 +198,7 @@ define(function () {
             });
 
             var kBufferLength = spec.bufferLength || 512;
-            var jsn = sm.keep(AC.createScriptProcessor(kBufferLength, numInputs, Math.min(1, numOutputs)));
+            var jsn = sm.keep(AC.createScriptProcessor(kBufferLength, numInputs, Math.max(1, numOutputs)));
             merger && merger.connect(jsn); 
             jsn.onaudioprocess = onaudioprocess;
             var jsnDestination = splitter || AC.destination;
