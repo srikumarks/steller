@@ -1,7 +1,7 @@
 {
   "name": "steller",
   "main": "src/steller",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "keywords": [
     "Web Audio API",
     "Sound models",
