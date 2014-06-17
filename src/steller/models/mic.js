@@ -58,7 +58,7 @@ define(function () {
 
         return function mic() {
             var micOut = AC.createGainNode();
-            var micModel = SoundModel({}, [], [micOut]);
+            var micModel = S.SoundModel({}, [], [micOut]);
 
             // 'ready' parameter = 1 indicates availability of mic,
             // -1 indicates error (in which case you can look at micModel.error)
