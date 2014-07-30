@@ -1,7 +1,7 @@
 {
   "name": "steller",
   "main": "src/steller.js",
-  "version": "0.4.0",
+  "version": "0.5.2",
   "homepage": "https://github.com/srikumarks/steller",
   "authors": [
     "Srikumar K. S. <srikumarks@gmail.com>"
