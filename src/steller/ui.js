@@ -83,7 +83,7 @@ UI.basicUI = function (document, model, sectionLabel) {
                         valueDisp.innerText = ' (' + round(value) + units + ')';
                             };
 
-                            slider.addEventListener('change', slider.changeModelParameter);
+                            slider.addEventListener('input', slider.changeModelParameter);
                             param.watch(slider.changeSliderValue);
 
                             [label, slider, valueDisp].forEach(insertBeforeEnd(cont));

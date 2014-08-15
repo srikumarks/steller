@@ -335,11 +335,11 @@ Param.prototype.bind = function (elem, sh) {
 
         updateElem.elem = elem;
         updateElem.unbind = function () {
-            elem.removeEventListener(onchange);
+            elem.removeEventListener('input', onchange);
             param.unwatch(updateElem);
         };
 
-        elem.addEventListener('change', onchange);
+        elem.addEventListener('input', onchange);
         param.watch(updateElem);
         updateElem(param.value);
     } else if (typeof elem === 'string') {
