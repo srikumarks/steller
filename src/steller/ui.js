@@ -18,7 +18,7 @@ function mappingFn(mapping) {
 
 function insertBeforeEnd(target) {
     return function (e) {
-        target.insertAdjacentElement('beforeend', e);
+        target.appendChild(e);
     };
 }
 
@@ -87,7 +87,7 @@ UI.basicUI = function (document, model, sectionLabel) {
                             param.watch(slider.changeSliderValue);
 
                             [label, slider, valueDisp].forEach(insertBeforeEnd(cont));
-                            div.insertAdjacentElement('beforeend', cont);
+                            div.appendChild(cont);
                             }
                             });
 
