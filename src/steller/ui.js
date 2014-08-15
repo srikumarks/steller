@@ -18,7 +18,7 @@ define(["./param"], function (Param) {
 
     function insertBeforeEnd(target) {
         return function (e) {
-            target.insertAdjacentElement('beforeend', e);
+            target.appendChild(e);
         };
     }
 
@@ -87,7 +87,7 @@ define(["./param"], function (Param) {
                 param.watch(slider.changeSliderValue);
 
                 [label, slider, valueDisp].forEach(insertBeforeEnd(cont));
-                div.insertAdjacentElement('beforeend', cont);
+                div.appendChild(cont);
             }
         });
 
