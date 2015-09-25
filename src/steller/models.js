@@ -26,7 +26,8 @@ var chime = require('./models/chime'),
     load_sample = require('./models/load_sample'),
     sample = require('./models/sample'),
     jsnode = require('./models/jsnode'),
-    buffer_queue = require('./models/buffer_queue');
+    buffer_queue = require('./models/buffer_queue'),
+    hihat = require('./models/hihat');
 
 module.exports = function maker(S, sh) {
 
@@ -41,6 +42,7 @@ module.exports = function maker(S, sh) {
     models.sample = sample(S, sh);
     models.jsnode = jsnode(S, sh);
     models.buffer_queue = buffer_queue(S, sh);
+    models.hihat = hihat(S, sh);
 
     return models;
 };
