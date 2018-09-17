@@ -10,10 +10,10 @@ steller.min.js.gz : steller.min.js
 	gzip --stdout steller.min.js > steller.min.js.gz
 
 steller.min.js : steller.js
-	cljs --compilation_level=SIMPLE_OPTIMIZATIONS steller.js > steller.min.js
+	uglifyjs -o steller.min.js steller.js
 
 steller.js : src/steller.js src/steller/*.js src/steller/models/*.js
-	cd src && r.js -o optimize=none name=steller out=../steller.js
+	cd src && browserify -s steller -o ../steller.js steller.js
 	
 deploy : steller.min.js.gz
 	which s3cmd && s3cmd $(GZIPENC) $(JSCONTENT) $(CACHE1W) -P put steller.min.js.gz "s3://sriku.org/lib/steller/steller_$(CURRVER).min.js"
