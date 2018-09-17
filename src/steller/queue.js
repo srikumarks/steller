@@ -45,13 +45,47 @@ function Queue(name) {
         return x;
     }
 
-    // Remove all elements.
-    function clear() {
+    // Remove all elements. The `optFn` is a function that, if given,
+    // will be invoked on all the queued elements before they're dumped
+    // from the queue. You can use this to do cleanup actions. 
+    //
+    // WARNING: Within the optFn, you cannot call add/remove/clear of this
+    // queue. Calling them will raise a "Method not available" error.
+    function clear(optFn) {
+        if (optFn) {
+            if (typeof(optFn) !== 'function') {
+                throw new Error("Queue: Argument to clear, if given, must be a function.");
+            }
+
+            // Protect against calling other methods during the
+            // optFn calls.
+            this.add = this.remove = this.clear = methodNotAvailable;
+
+            for (let i = 0; i < length; ++i) {
+                try {
+                    if (store[i]) {
+                        optFn(store[i]);
+                    }
+                } catch (e) {
+                    // Swallow exceptions.
+                    console.error("BAD PROGRAMMER ERROR: Cleanup functions for scheduler models should not throw.");
+                }
+            }
+
+            this.add = add;
+            this.remove = remove;
+            this.clear = clear;
+        }
+        
         this.length = length = 0;
         store.splice(0, store.length, null, null, null, null);
         maxLength = 4;
         removeAt = -1;
         addAt = 0;
+    }
+
+    function methodNotAvailable() {
+        throw new Error('Method not available');
     }
 
     // Length is kept up to date.

@@ -144,9 +144,18 @@ function Scheduler(audioContext, options) {
 
     // Cancels all currently running actions.
     function cancel() {
-        uqueue.clear();
-        queue.clear();
-        fqueue.clear();
+        uqueue.clear(cancelModel);
+        queue.clear(cancelModel);
+        fqueue.clear(cancelModel);
+    }
+
+    // Individual models can provide a "cancel" method which will get
+    // called if the scheduler is cancelled when the model happens
+    // to be active. 
+    function cancelModel(model) {
+        if (model && model.cancel && typeof(model.cancel) === 'function') {
+            model.cancel();
+        }
     }
 
     // `scheduleTick` needs to be called with good solid regularity.
