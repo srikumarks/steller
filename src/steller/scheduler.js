@@ -153,8 +153,8 @@ function Scheduler(audioContext, options) {
     // called if the scheduler is cancelled when the model happens
     // to be active. 
     function cancelModel(model) {
-        if (model && model.cancel && typeof(model.cancel) === 'function') {
-            model.cancel();
+        if (model && model.__cancel__ instanceof Function) {
+            model.__cancel__();
         }
     }
 
@@ -440,6 +440,58 @@ function Scheduler(audioContext, options) {
             tick(sched, clock);
         };
     }
+
+    // ### cancellable
+    //
+    //      cancellable(onCancelFn) -> model
+    //
+    // Makes a model that will keep running for ever until it is
+    // explicitly stopped. When the scheduler is cancelled, the
+    // specified onCancelFn will be invoked if the model is still
+    // in effect. This is useful to run track specific actions
+    // when the scheduler is cancelled.
+    //
+    // Since this is infinite in extent, you should use it only
+    // with spawn and not with fork.
+    function cancellable(onCancelFn) {
+        if (!(onCancelFn instanceof Function)) {
+            throw new Error('BAD PROGRAMMER: Invalid cancel handler. Needs to be a function.');
+        }
+
+        let done = false;
+
+        function cancellableInstance(sched, clock, next) {
+            if (done) {
+                next(sched, clock, stop);
+            } else {
+                clock.tick();
+                schedule(cancellableInstance);
+            }
+        }
+
+        // Use the cancel method of the model to cancel then
+        // cancellation action to be taken when the scheduler
+        // pending actions are cancelled. Usually you'll want
+        // to do this when the lifetime of some track has
+        // finished without any pending actions to be taken.
+        //
+        // Note that this itself can be used as a zero-duration
+        // model or called directly. You can use it at the end
+        // of a track, for example, to remove the cancellation
+        // handlers when a track completes.
+        cancellableInstance.cancel = function (sched, clock, next) {
+            cancellableInstance.__cancel__ = undefined;
+            done = true;
+            if (next instanceof Function) {
+                next(sched, clock, stop);
+            }
+        };
+
+        cancellableInstance.__cancel__ = onCancelFn;
+
+        return cancellableInstance;
+    }
+
 
     // ### seq (internal)
     //
@@ -1296,6 +1348,7 @@ function Scheduler(audioContext, options) {
     self.stop           = stop;
     self.cont           = cont;
     self.delay          = delay;
+    self.cancellable    = cancellable;
     self.loop           = loop;
     self.loop_while     = loop_while;
     self.repeat         = repeat;
