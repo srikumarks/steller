@@ -31,6 +31,10 @@ function Clock(t, tr, dt, rate) {
     // clock's copy() method.
     this.data = null; 
 
+    // If this clock is derived by copying another clock, then the
+    // parent field is set to the parent clock. 
+    this.parent = null;
+
     return this;
 }
 
@@ -51,6 +55,7 @@ Clock.prototype.copy = function () {
     if (this.data) {
         c.data = Object.create(this.data);
     }
+    c.parent = this;
     return c;
 };
 
@@ -125,6 +130,27 @@ Clock.prototype.rel2abs = function (rel) {
 // Absolute time to relative time.
 Clock.prototype.abs2rel = function (abs) {
     return this.t1r + (abs - this.t1) * this.rate.valueOf();
+};
+
+// The clock's stop() method is intended to be overridden, but
+// its minimum functionality is expected to be to set the "dt"
+// property to 0 to indicate that the clock is stopped. If a
+// delay encounters a stopped clock, it will not schedule itself
+// and so will effectively be terminated. You can override the
+// stop behaviour of a clock by setting a custom `stop()` method,
+// which can do anything it wants, but it MUST set dt to 0 for the
+// clock to actually stop.
+Clock.prototype.stop = function () {
+    this.dt = 0;
+    return this;
+};
+
+// Whether a clock is stopped depends on its own dt as
+// well as its parent's dt.
+//
+// WARNING: Potentially inefficient call.
+Clock.prototype.isStopped = function () {
+    return this.dt === 0 || (this.parent && this.parent.isStopped());
 };
 
 module.exports = Clock;

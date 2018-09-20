@@ -144,18 +144,9 @@ function Scheduler(audioContext, options) {
 
     // Cancels all currently running actions.
     function cancel() {
-        uqueue.clear(cancelModel);
-        queue.clear(cancelModel);
-        fqueue.clear(cancelModel);
-    }
-
-    // Individual models can provide a "cancel" method which will get
-    // called if the scheduler is cancelled when the model happens
-    // to be active. 
-    function cancelModel(model) {
-        if (model && model.__cancel__ instanceof Function) {
-            model.__cancel__();
-        }
+        uqueue.clear();
+        queue.clear();
+        fqueue.clear();
     }
 
     // `scheduleTick` needs to be called with good solid regularity.
@@ -307,13 +298,24 @@ function Scheduler(audioContext, options) {
         model(self, clock, next);
     }
 
+    // ### clock()
+    //
+    // Constructs a new clock based on the main clock.
+    function clock() {
+        return mainClock.copy().jumpTo(time_secs());
+    }
+
     // ### play
     //
     // Having constructed a model, you use play() to play it.
     // The playing starts immediately. See `delay` below if you want
     // the model to start playing some time in the future.
-    function playNow(model) {
-        model(self, mainClock.copy().jumpTo(time_secs()), stop);
+    //
+    // If you construct a clock yourself, you can pass that
+    // as the second argument. This will let you stop all derived
+    // clocks using the clock.stop() mechanism.
+    function playNow(model, optClock) {
+        model(self, optClock || clock(), stop);
     }
 
     var play = (function () {
@@ -325,9 +327,12 @@ function Scheduler(audioContext, options) {
              * technique is sufficient only for iOS6 on iPhone4. Safari on
              * iPad doesn't work even with this wait in place. 
              */
-            return function waitForAudioClockStartAndPlay(model) {
+            return function waitForAudioClockStartAndPlay(model, clock) {
                 if (audioContext.currentTime === 0) {
-                    setTimeout(waitForAudioClockStartAndPlay, 100, model);
+                    setTimeout(waitForAudioClockStartAndPlay, 100, model, clock);
+                } else if (clock) {
+                    self.play = play = playNow;
+                    playNow(model, clock);
                 } else {
                     mainClock = new Clock(time_secs(), 0, clockDt, 1.0);
                     compute_upto_secs = mainClock.t1;
@@ -383,10 +388,22 @@ function Scheduler(audioContext, options) {
     // interval for which it is being called. Continuous parameter
     // animations can be handled using the callback, for example.
     function delay(dt, callback) {
-        return function (sched, clock, next) {
+        function delayInstance(sched, clock, next) {
             var startTime = clock.t1r;
 
             function tick(sched, clock) {
+                // Provide a way for derived clocks to stop.
+                // A derived clock will return true for isStopped()
+                // if its parent is stopped. So if the derived
+                // clock's stop() method is then overridden, it will
+                // result in the stop actions being taken. The protocol
+                // for the stop() method is that it must at least
+                // set dt to 0.
+                if (clock.isStopped()) {
+                    clock.stop();
+                    return;
+                }
+                
                 var endTime = startTime + dt.valueOf();
 
                 // If lagging behind, advance time before processing models.
@@ -438,60 +455,10 @@ function Scheduler(audioContext, options) {
             }
 
             tick(sched, clock);
-        };
-    }
-
-    // ### cancellable
-    //
-    //      cancellable(onCancelFn) -> model
-    //
-    // Makes a model that will keep running for ever until it is
-    // explicitly stopped. When the scheduler is cancelled, the
-    // specified onCancelFn will be invoked if the model is still
-    // in effect. This is useful to run track specific actions
-    // when the scheduler is cancelled.
-    //
-    // Since this is infinite in extent, you should use it only
-    // with spawn and not with fork.
-    function cancellable(onCancelFn) {
-        if (!(onCancelFn instanceof Function)) {
-            throw new Error('BAD PROGRAMMER: Invalid cancel handler. Needs to be a function.');
         }
 
-        let done = false;
-
-        function cancellableInstance(sched, clock, next) {
-            if (done) {
-                next(sched, clock, stop);
-            } else {
-                clock.tick();
-                schedule(cancellableInstance);
-            }
-        }
-
-        // Use the cancel method of the model to cancel then
-        // cancellation action to be taken when the scheduler
-        // pending actions are cancelled. Usually you'll want
-        // to do this when the lifetime of some track has
-        // finished without any pending actions to be taken.
-        //
-        // Note that this itself can be used as a zero-duration
-        // model or called directly. You can use it at the end
-        // of a track, for example, to remove the cancellation
-        // handlers when a track completes.
-        cancellableInstance.cancel = function (sched, clock, next) {
-            cancellableInstance.__cancel__ = undefined;
-            done = true;
-            if (next instanceof Function) {
-                next(sched, clock, stop);
-            }
-        };
-
-        cancellableInstance.__cancel__ = onCancelFn;
-
-        return cancellableInstance;
+        return delayInstance;
     }
-
 
     // ### seq (internal)
     //
@@ -1344,11 +1311,11 @@ function Scheduler(audioContext, options) {
     self.update         = scheduleUpdate;
     self.perform        = perform;
     self.cancel         = cancel;
+    self.clock          = clock;
     self.play           = play;
     self.stop           = stop;
     self.cont           = cont;
     self.delay          = delay;
-    self.cancellable    = cancellable;
     self.loop           = loop;
     self.loop_while     = loop_while;
     self.repeat         = repeat;
