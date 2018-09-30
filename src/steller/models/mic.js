@@ -43,25 +43,25 @@ module.exports = function installer(S, sh) {
     }
 
     function setupMic(micModel, stream) {
-        if (!micSource) {
+        if (!micModel.source) {
             ASSERT(stream);
-            micSource = AC.createMediaStreamSource(stream);
+            micModel.source = AC.createMediaStreamSource(stream);
         }
 
-        micSource.connect(micModel.outputs[0]);
+        micModel.source.connect(micModel.outputs[0]);
         micModel.error = null;
         let settings = stream.getAudioTracks()[0].getSettings();
-        mixModel.latency_secs = settings.latency || undefined;  // Latency may not be available,
+        micModel.latency_secs = settings.latency || undefined;  // Latency may not be available,
                                                                 // in which case we mark it as
                                                                 // undefined.
         micModel.ready.value = 1;
     }
 
-    let micSource = null; // Make only one mic source node per context.
-
     return function mic() {
         var micOut = AC.createGainNode();
         var micModel = S.SoundModel({}, [], [micOut]);
+
+        micModel.source = null; // This is the stream source node.
 
         // 'ready' parameter = 1 indicates availability of mic,
         // -1 indicates error (in which case you can look at micModel.error)
@@ -72,17 +72,26 @@ module.exports = function installer(S, sh) {
         // different gains.
         micModel.gain = S.Param({min: 0, max: 1, audioParam: micOut.gain});
 
-        if (micSource) {
-            setupMic(micModel, null);
-        } else {
-            // We turn off autoGainControl and such automatic processing 
-            // available with some systems because they generally play havoc
-            // with musical intentions.
-            getUserMedia({ audio: { latency: {min: 0.0, max: 0.05, ideal: 0.015},
-                                    echoCancellation: false,
-                                    autoGainControl: false,
-                                    noiseSuppression: false
-                                    }},
+        micModel.stop = function (t) {
+            micModel.source.mediaStream.getAudioTracks()[0].stop();
+            micModel.source.disconnect();
+            micModel.source = null;
+            micModel.ready.value = 0;
+        };
+
+        micModel.start = function (t) {
+            if (micModel.source) {
+                setupMic(micModel, null);
+            } else {
+                // We turn off autoGainControl and such automatic processing 
+                // available with some systems because they generally play havoc
+                // with musical intentions.
+                getUserMedia({
+                    audio: { latency: {min: 0.0, max: 0.05, ideal: 0.015},
+                             echoCancellation: false,
+                             autoGainControl: false,
+                             noiseSuppression: false
+                    }},
                     function (stream) {
                         return setupMic(micModel, stream);
                     },
@@ -91,7 +100,11 @@ module.exports = function installer(S, sh) {
                         micModel.gain.value = 0; // Mute it.
                         micModel.ready.value = -1;
                     });
-        }
+            }
+        };
+
+        // Start it by default already.
+        micModel.start(0);
 
         return micModel;
     };
