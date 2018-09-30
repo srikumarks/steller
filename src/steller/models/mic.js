@@ -32,11 +32,11 @@
 //          }
 //      });
 module.exports = function installer(S, sh) {
-    var AC = sh.audioContext;
+    let AC = sh.audioContext;
 
     function getUserMedia(dictionary, callback, errback) {
         try {
-            navigator.webkitGetUserMedia(dictionary, callback, errback);
+            navigator.mediaDevices.getUserMedia(dictionary).then(callback).catch(errback);
         } catch (e) {
             errback(e);
         }
@@ -50,10 +50,14 @@ module.exports = function installer(S, sh) {
 
         micSource.connect(micModel.outputs[0]);
         micModel.error = null;
+        let settings = stream.getAudioTracks()[0].getSettings();
+        mixModel.latency_secs = settings.latency || undefined;  // Latency may not be available,
+                                                                // in which case we mark it as
+                                                                // undefined.
         micModel.ready.value = 1;
     }
 
-    var micSource; // Make only one mic source node per context.
+    let micSource = null; // Make only one mic source node per context.
 
     return function mic() {
         var micOut = AC.createGainNode();
@@ -71,7 +75,14 @@ module.exports = function installer(S, sh) {
         if (micSource) {
             setupMic(micModel, null);
         } else {
-            getUserMedia({audio: true},
+            // We turn off autoGainControl and such automatic processing 
+            // available with some systems because they generally play havoc
+            // with musical intentions.
+            getUserMedia({ audio: { latency: {min: 0.0, max: 0.05, ideal: 0.015},
+                                    echoCancellation: false,
+                                    autoGainControl: false,
+                                    noiseSuppression: false
+                                    }},
                     function (stream) {
                         return setupMic(micModel, stream);
                     },
