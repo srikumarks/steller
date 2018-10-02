@@ -34,6 +34,15 @@
 module.exports = function installer(S, sh) {
     let AC = sh.audioContext;
 
+    let audioConstraints = {
+        audio: {
+            latency: {min: 0.0, max: 0.05, ideal: 0.015},
+            echoCancellation: false,
+            autoGainControl: false,
+            noiseSuppression: false
+        }
+    };
+
     function getUserMedia(dictionary, callback, errback) {
         try {
             navigator.mediaDevices.getUserMedia(dictionary).then(callback).catch(errback);
@@ -42,25 +51,29 @@ module.exports = function installer(S, sh) {
         }
     }
 
-    function setupMic(micModel, stream) {
+    function setupMic(micModel) {
+        if (!micModel.source && micModel.stream) {
+            micModel.source = AC.createMediaStreamSource(micModel.stream);
+        }
+
         if (!micModel.source) {
-            ASSERT(stream);
-            micModel.source = AC.createMediaStreamSource(stream);
+            throw new Error('Mic source not initialized');
         }
 
         micModel.source.connect(micModel.outputs[0]);
         micModel.error = null;
-        let settings = stream.getAudioTracks()[0].getSettings();
+        let settings = micModel.stream.getAudioTracks()[0].getSettings();
         micModel.latency_secs = settings.latency || undefined;  // Latency may not be available,
                                                                 // in which case we mark it as
                                                                 // undefined.
         micModel.ready.value = 1;
     }
 
-    return function mic() {
+    function mic(options) {
         var micOut = AC.createGainNode();
         var micModel = S.SoundModel({}, [], [micOut]);
 
+        micModel.stream = null; // This is the stream attached to the source node.
         micModel.source = null; // This is the stream source node.
 
         // 'ready' parameter = 1 indicates availability of mic,
@@ -72,42 +85,54 @@ module.exports = function installer(S, sh) {
         // different gains.
         micModel.gain = S.Param({min: 0, max: 1, audioParam: micOut.gain});
 
-        micModel.stop = function (t) {
-            micModel.source.mediaStream.getAudioTracks()[0].stop();
-            micModel.source.disconnect();
-            micModel.source = null;
-            micModel.ready.value = 0;
+        // A model to stop the mic before proceeding.
+        micModel.stop = function (sh, clock, next) {
+            if (micModel.source) {
+                micModel.source.mediaStream.getAudioTracks()[0].stop();
+                micModel.source.disconnect();
+                micModel.source = null;
+                micModel.ready.value = 0;
+            }
+            next(sh, clock, sh.stop);
         };
 
-        micModel.start = function (t) {
-            if (micModel.source) {
-                setupMic(micModel, null);
+        // A model which will continue only when mic request either succeeds
+        // or fails. Failure can be detected by examining the .ready.value
+        // property, which will be 0 if the request failed.
+        micModel.start = function (sh, clock, next) {
+            if (micModel.stream) {
+                setupMic(micModel);
+                next(sh, clock, sh.stop);
             } else {
                 // We turn off autoGainControl and such automatic processing 
                 // available with some systems because they generally play havoc
                 // with musical intentions.
-                getUserMedia({
-                    audio: { latency: {min: 0.0, max: 0.05, ideal: 0.015},
-                             echoCancellation: false,
-                             autoGainControl: false,
-                             noiseSuppression: false
-                    }},
+                getUserMedia(audioConstraints,
                     function (stream) {
-                        return setupMic(micModel, stream);
+                        micModel.stream = stream;
+                        setupMic(micModel);
+                        next(sh, clock, sh.stop);
                     },
                     function (e) {
                         micModel.error = e;
                         micModel.gain.value = 0; // Mute it.
                         micModel.ready.value = -1;
+                        console.error(e);
+                        next(sh, clock, sh.stop);
                     });
             }
         };
 
-        // Start it by default already.
-        micModel.start(0);
+        // Start by default, but if an option to suppress start is
+        // given, respect that.
+        if (!(options && options.dontStart)) {
+            sh.play(micModel.start);
+        }
 
         return micModel;
-    };
+    }
+
+    return mic;
 };
 
 
