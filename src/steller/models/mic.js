@@ -100,7 +100,10 @@ module.exports = function installer(S, sh) {
         // or fails. Failure can be detected by examining the .ready.value
         // property, which will be 0 if the request failed.
         micModel.start = function (sh, clock, next) {
-            if (micModel.stream) {
+            if (micModel.source) {
+                // We're ready already.
+                next(sh, clock, sh.stop);
+            } else if (micModel.stream) {
                 setupMic(micModel);
                 next(sh, clock, sh.stop);
             } else {
@@ -109,9 +112,12 @@ module.exports = function installer(S, sh) {
                 // with musical intentions.
                 getUserMedia(audioConstraints,
                     function (stream) {
-                        micModel.stream = stream;
-                        setupMic(micModel);
-                        next(sh, clock, sh.stop);
+                        if (stream) {
+                            micModel.stream = stream;
+                            micModel.start(sh, clock, next);
+                        } else {
+                            next(sh, clock, sh.stop);
+                        }
                     },
                     function (e) {
                         micModel.error = e;
