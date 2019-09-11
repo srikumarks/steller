@@ -19,7 +19,7 @@ Examples -
 [Web Audio API]: https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html
 [playground]: http://srikumarks.github.io/demos/steller_explorer/
 [TP]: http://talakeeper.org/talas.html
-[GB]: http://sriku.org/demos/gurur/
+[GB]: https://patantara.com/demos/gurur
 
 ## Usage
 
