@@ -1292,7 +1292,7 @@ function Scheduler(audioContext, options) {
                 args = args.map(function (arg) { return specFromJSON(arg, vocab); });
             }
         } else if (args.constructor === Object) {
-            args = [impl.convertArgs ? fromJSON(args, vocab) : args];
+            args = [impl.convertArgs ? specFromJSON(args, vocab) : args];
         } else {
             args = [args]; // Solo argument.
         }
