@@ -6,7 +6,7 @@ function START() {
     document.getElementById('demo_section').removeAttribute('hidden');
 
     // Some helpers for the demos.
-    var steller = org.anclab.steller;       // Alias for namespace.
+    var steller = window.steller;
 
     var AC = new steller.AudioContext(); // Make an audio context.
 
