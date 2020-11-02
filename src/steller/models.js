@@ -20,6 +20,7 @@
 var chime = require('./models/chime'),
     dc = require('./models/dc'),
     noise = require('./models/noise'),
+    noisegate = require('./models/noisegate'),
     probe = require('./models/probe'),
     mic = require('./models/mic'),
     spectrum = require('./models/spectrum'),
@@ -35,6 +36,7 @@ module.exports = function maker(S, sh) {
     models.chime = chime(S, sh);
     models.dc = dc(S, sh);
     models.noise = noise(S, sh);
+    models.noisegate = noisegate(S, sh);
     models.probe = probe(S, sh);
     models.mic = mic(S, sh);
     models.spectrum = spectrum(S, sh);
