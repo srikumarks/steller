@@ -2,13 +2,13 @@ var validEventName = (function () {
     var dummy = {};
 
     return function (eventName) {
-        ASSERT(typeof(eventName) == 'string');
+        ASSERT(typeof eventName == "string");
         if (dummy[eventName]) {
-            throw new Error('Invalid event name - ' + eventName);
+            throw new Error("Invalid event name - " + eventName);
         }
         return eventName;
     };
-}());
+})();
 
 var nextEventableWatcherID = 1;
 
@@ -21,13 +21,13 @@ function Eventable(obj) {
     // on(eventName, watcher)
     //
     // Installs the given watchers (callbacks) for the specified
-    // eventName. The watchers will all be called once the event 
+    // eventName. The watchers will all be called once the event
     // is "emit"ed. The watchers will be passed the same argument-list
     // as the emit(..) call. The "this" context is set to `obj` inside
     // a watcher call.
     function on(eventName, watcher) {
         ASSERT(arguments.length === 2);
-        ASSERT(typeof(watcher) === 'function');
+        ASSERT(typeof watcher === "function");
 
         var i, N;
 
@@ -35,18 +35,18 @@ function Eventable(obj) {
 
         var eventWatchers = watchers[eventName] || (watchers[eventName] = {});
 
-        var id = watcher['__steller_eventable_id__'] || 0;
+        var id = watcher["__steller_eventable_id__"] || 0;
 
         if (id in eventWatchers) {
             return this;
         }
 
         if (!id) {
-            Object.defineProperty(watcher, '__steller_eventable_id__', {
+            Object.defineProperty(watcher, "__steller_eventable_id__", {
                 value: (id = nextEventableWatcherID++),
                 enumerable: false,
                 configurable: false,
-                writable: false
+                writable: false,
             });
         }
 
@@ -72,7 +72,7 @@ function Eventable(obj) {
             return this;
         }
 
-        var wid = (watcher && watcher['__steller_eventable_id__']) || 0;
+        var wid = (watcher && watcher["__steller_eventable_id__"]) || 0;
 
         if (wid) {
             WARNIF(!eventWatchers[wid], "Watcher not found!");
@@ -110,9 +110,9 @@ function Eventable(obj) {
         return this;
     }
 
-    ASSERT(!('on' in obj));
-    ASSERT(!('off' in obj));
-    ASSERT(!('emit' in obj));
+    ASSERT(!("on" in obj));
+    ASSERT(!("off" in obj));
+    ASSERT(!("emit" in obj));
 
     obj.on = on;
     obj.off = off;
@@ -129,7 +129,7 @@ Eventable.observe = function (obj, methodName, eventName) {
     eventName = validEventName(eventName || methodName);
 
     var method = obj[methodName];
-    REQUIRE(typeof(method) === 'function');
+    REQUIRE(typeof method === "function");
 
     obj[methodName] = function () {
         var result = method.apply(this, arguments);

@@ -1,11 +1,11 @@
 // Utility for prohibiting parameter names such as "constructor",
 // "hasOwnProperty", etc.
-var AudioContext = require('./AudioContext');
+var AudioContext = require("./AudioContext");
 
 // Some utility functions.
 var Util = {};
 
-var dummyObject = {params: true, length: 1};
+var dummyObject = { params: true, length: 1 };
 
 Util.validName = function validName(name) {
     if (dummyObject[name]) {
@@ -20,27 +20,33 @@ Util.p2f = function (pitch) {
 };
 
 Util.f2p = function (f) {
-    var p = 69 + 12 * Math.log(f.valueOf() / 440) / Math.LN2;
+    var p = 69 + (12 * Math.log(f.valueOf() / 440)) / Math.LN2;
     return Math.round(p * 100) / 100; // Cents level precision is enough.
 };
 
 // A function to find out if we're running in a browser environment.
 // The other environment possible is node.js.
 Util.detectBrowserEnv = function detectBrowserEnv() {
-    return typeof(window) === 'object' && typeof(document) === 'object' && window.document === document;
+    return (
+        typeof window === "object" &&
+        typeof document === "object" &&
+        window.document === document
+    );
 };
 
 // Until requestAnimationFrame comes standard in all browsers, test
 // for the prefixed names as well.
 Util.getRequestAnimationFrameFunc = function getRequestAnimationFrameFunc() {
     try {
-        return (window.requestAnimationFrame ||
-                window.webkitRequestAnimationFrame ||
-                window.mozRequestAnimationFrame ||
-                window.msRequestAnimationFrame ||
-                (function (cb) {
-                    setTimeout(cb, 1000/60);
-                }));
+        return (
+            window.requestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            window.mozRequestAnimationFrame ||
+            window.msRequestAnimationFrame ||
+            function (cb) {
+                setTimeout(cb, 1000 / 60);
+            }
+        );
     } catch (e) {
         return undefined;
     }
@@ -57,15 +63,14 @@ Util.getAudioContext = function getAudioContext() {
 Util.getHighResPerfTimeFunc = function getHighResPerfTimeFunc() {
     try {
         var perf = window.performance;
-        var perfNow = (perf && (perf.now || perf.webkitNow || perf.mozNow));
+        var perfNow = perf && (perf.now || perf.webkitNow || perf.mozNow);
         if (perfNow) {
             // High resolution performance time available.
             return function () {
                 return perfNow.call(perf) * 0.001;
             };
         }
-    } catch (e) {
-    }
+    } catch (e) {}
 
     // Fall back to Date.now().
     return function () {

@@ -29,10 +29,10 @@ function Clock(t, tr, dt, rate) {
     // (ex: `data.arr[3]`) is likely to affect all tracks that can access
     // that object. You can override how data is copied by overriding a
     // clock's copy() method.
-    this.data = null; 
+    this.data = null;
 
     // If this clock is derived by copying another clock, then the
-    // parent field is set to the parent clock. 
+    // parent field is set to the parent clock.
     this.parent = null;
 
     return this;
@@ -45,7 +45,9 @@ function ms(t) {
 
 // Convenience method to show the state of a clock object.
 Clock.prototype.toString = function () {
-    return JSON.stringify([this.t1r, this.t2r - this.t1r, this.t1, this.t2 - this.t1].map(ms));
+    return JSON.stringify(
+        [this.t1r, this.t2r - this.t1r, this.t1, this.t2 - this.t1].map(ms)
+    );
 };
 
 // Makes a copy such that the absolute and rate-integrated
@@ -68,7 +70,7 @@ Clock.prototype.advance = function (dt) {
     return this;
 };
 
-// Advances the absolute time interval by dt = t - clock.t1. Doesn't 
+// Advances the absolute time interval by dt = t - clock.t1. Doesn't
 // touch the rate integrated time. It is in general desirable to keep
 // the rate integrated time continuous.
 Clock.prototype.advanceTo = function (t) {
@@ -116,7 +118,8 @@ Clock.prototype.syncWith = function (clock) {
 Clock.prototype.nudgeToRel = function (tr) {
     tr = Math.max(this.t1r, tr);
     if (this.t2r > this.t1r) {
-        this.t1 += (tr - this.t1r) * (this.t2 - this.t1) / (this.t2r - this.t1r);
+        this.t1 +=
+            ((tr - this.t1r) * (this.t2 - this.t1)) / (this.t2r - this.t1r);
     }
     this.t1r = tr;
     return this;

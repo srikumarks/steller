@@ -1,6 +1,6 @@
-var Eventable = require('./eventable');
+var Eventable = require("./eventable");
 
-var kAsyncEventableKey = '__steller_async_eventable__';
+var kAsyncEventableKey = "__steller_async_eventable__";
 
 // A variant of Eventable where watchers will be triggered asynchronously.
 function AsyncEventable(obj) {
@@ -9,7 +9,7 @@ function AsyncEventable(obj) {
     var on = obj.on;
     obj.on = function asyncOn(eventName, watcher) {
         ASSERT(arguments.length === 2);
-        ASSERT(typeof(watcher) === 'function');
+        ASSERT(typeof watcher === "function");
 
         if (!watcher) {
             return this;
@@ -21,11 +21,13 @@ function AsyncEventable(obj) {
             Object.defineProperty(watcher, kAsyncEventableKey, {
                 value: (async = function () {
                     var argv = arguments;
-                    setTimeout(function () { watcher.apply(obj, argv); }, 0);
+                    setTimeout(function () {
+                        watcher.apply(obj, argv);
+                    }, 0);
                 }),
-                    enumerable: false,
+                enumerable: false,
                 configurable: false,
-                writable: false
+                writable: false,
             });
         }
 
@@ -33,8 +35,6 @@ function AsyncEventable(obj) {
     };
 
     return obj;
-
 }
 
 module.exports = AsyncEventable;
-

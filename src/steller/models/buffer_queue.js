@@ -1,11 +1,10 @@
-
 // buffer_queue
 //
 // A model to which you can submit AudioBuffers to be played
 // back in FIFO order. If you're computing audio buffers in JS,
 // you can treat this as a pump. You can, for example, create
 // Float32Arrays in a JS worker and pump it to the audio output
-// using this queue. Also features a simple timer to get a 
+// using this queue. Also features a simple timer to get a
 // just-in-time callback to keep the queue flowing.
 //
 // Example code to play a sine wave -
@@ -32,16 +31,16 @@
 */
 //
 // model.gain is a Param that controls the output gain of the queue.
-// 
+//
 // model.start(time) will start the queue at the given time. You can
 // start the queue only once. Subsequent calls will be a no-op.
 //
 // model.enqueue(audioBuffer|channelArray|Float32Array) will enqueue
 // the given buffer to be played after the already enqueued buffers
 // are done. If the argument is an AudioBuffer object, then it is
-// added to the queue by reference and not copied for efficiency. 
-// The other Float32Array based objects will first be converted 
-// into an AudioBuffer before being added to the queue and therefore 
+// added to the queue by reference and not copied for efficiency.
+// The other Float32Array based objects will first be converted
+// into an AudioBuffer before being added to the queue and therefore
 // can be reused.
 //
 // model.createBuffer(channels, length) is a convenience method
@@ -51,15 +50,14 @@
 // model.latency_secs will give the "currentTime" (according to the
 // audio context) at which the next buffer submitted will begin playing.
 //
-// When the queue is running low and it needs some filling up, 
-// it will fire a 'low' event. You can watch for this event and 
-// respond by filling up the queue with more buffers. This event 
+// When the queue is running low and it needs some filling up,
+// it will fire a 'low' event. You can watch for this event and
+// respond by filling up the queue with more buffers. This event
 // fires just a little before the queue is about to be emptied,
 // not *after* it is emptied.
 module.exports = function installer(S, sh) {
     var AC = sh.audioContext;
     return function buffer_queue() {
-
         var output = AC.createGainNode();
         var model = S.SoundModel({}, [], [output]);
 
@@ -69,7 +67,12 @@ module.exports = function installer(S, sh) {
         var queueDuration = 0.0;
         var generating = false;
 
-        model.gain = S.Param({min: -10.0, max: 10.0, audioParam: output.gain, mapping: 'log'});
+        model.gain = S.Param({
+            min: -10.0,
+            max: 10.0,
+            audioParam: output.gain,
+            mapping: "log",
+        });
 
         function flushQueue() {
             // Don't play buffers into the past since the engine
@@ -94,7 +97,12 @@ module.exports = function installer(S, sh) {
 
         function latency_secs() {
             // If not started yet, return invalid 0.0 value.
-            return queueDuration + (startTime < 0.0 ? 0.0 : Math.max(0.0, nextBufferTime - AC.currentTime));
+            return (
+                queueDuration +
+                (startTime < 0.0
+                    ? 0.0
+                    : Math.max(0.0, nextBufferTime - AC.currentTime))
+            );
         }
 
         model.createBuffer = function (channels, length) {
@@ -108,10 +116,15 @@ module.exports = function installer(S, sh) {
                 if (audioBuffer.constructor === Array) {
                     for (i = 0; i < audioBuffer.length; ++i) {
                         if (audioBuffer[i].length !== audioBuffer[0].length) {
-                            throw new Error('steller:buffer_queue: Inconsistent channel sizes.');
+                            throw new Error(
+                                "steller:buffer_queue: Inconsistent channel sizes."
+                            );
                         }
                     }
-                    queuedBuffer = model.createBuffer(audioBuffer.length, audioBuffer[0].length);
+                    queuedBuffer = model.createBuffer(
+                        audioBuffer.length,
+                        audioBuffer[0].length
+                    );
                     for (i = 0; i < audioBuffer.length; ++i) {
                         queuedBuffer.getChannelData(i).set(audioBuffer[i]);
                     }
@@ -119,7 +132,9 @@ module.exports = function installer(S, sh) {
                     queuedBuffer = model.createBuffer(1, audioBuffer.length);
                     queuedBuffer.getChannelData(0).set(audioBuffer);
                 } else {
-                    throw new Error('steller.buffer_queue: Unsupported buffer object.');
+                    throw new Error(
+                        "steller.buffer_queue: Unsupported buffer object."
+                    );
                 }
             } else {
                 queuedBuffer = audioBuffer;
@@ -147,7 +162,7 @@ module.exports = function installer(S, sh) {
             return model;
         };
 
-        model.__defineGetter__('latency_secs', latency_secs);
+        model.__defineGetter__("latency_secs", latency_secs);
 
         model.kPrepareAheadTime_ms = 50;
 
@@ -160,14 +175,17 @@ module.exports = function installer(S, sh) {
 
         function onLow() {
             generating = false;
-            model.emit('low', model);
+            model.emit("low", model);
         }
 
         function schedule(callback) {
             var delay_ms = Math.floor(model.latency_secs * 1000);
 
             if (delay_ms > model.kPrepareAheadTime_ms) {
-                setTimeout(callback, Math.floor(delay_ms - model.kPrepareAheadTime_ms));
+                setTimeout(
+                    callback,
+                    Math.floor(delay_ms - model.kPrepareAheadTime_ms)
+                );
             } else {
                 S.nextTick(callback); // Call right away. Not enough time left.
             }
@@ -176,5 +194,3 @@ module.exports = function installer(S, sh) {
         return model;
     };
 };
-
-

@@ -1,12 +1,13 @@
-
 // ## JSNodeTimer
 //
 // This is a timer class with the same interface as `PeriodicTimer`, but which uses
 // a `JavaScriptNode` to generate the callbacks.
-var PeriodicTimer = require('./periodictimer');
+var PeriodicTimer = require("./periodictimer");
 
 function preserveNode(node) {
-    (window.JSNodeTimer_jsnodes || (window.JSNodeTimer_jsnodes = [])).push(node);
+    (window.JSNodeTimer_jsnodes || (window.JSNodeTimer_jsnodes = [])).push(
+        node
+    );
 }
 
 function JSNodeTimer(callback, precision_ms, audioContext) {
@@ -34,8 +35,10 @@ function JSNodeTimer(callback, precision_ms, audioContext) {
                 running = false;
             }
         };
-        self.__defineGetter__('running', function () { return running; });
-        self.__defineSetter__('running', function (val) {
+        self.__defineGetter__("running", function () {
+            return running;
+        });
+        self.__defineSetter__("running", function (val) {
             if (val) {
                 self.start();
             } else {
@@ -46,7 +49,8 @@ function JSNodeTimer(callback, precision_ms, audioContext) {
 
         // Indicate a usable compute ahead interval based on how
         // frequently the callbacks happen;
-        self.computeAheadInterval_secs = (Math.round(kBufferSize * 2.5)) / audioContext.sampleRate;
+        self.computeAheadInterval_secs =
+            Math.round(kBufferSize * 2.5) / audioContext.sampleRate;
 
         return self;
     } else {
@@ -55,4 +59,3 @@ function JSNodeTimer(callback, precision_ms, audioContext) {
 }
 
 module.exports = JSNodeTimer;
-

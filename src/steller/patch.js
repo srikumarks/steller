@@ -1,10 +1,9 @@
-var Eventable = require('./eventable');
+var Eventable = require("./eventable");
 
 module.exports = function (steller) {
-
     // A "patch" is a "graph node set" that helps keep track of a set of
     // connected SoundModel (or GraphNode) objects so that the network can
-    // be saved and loaded across sessions. 
+    // be saved and loaded across sessions.
     //
     // nodeTypes can either be another Patch instance from which to inherit
     // model constructor definitions, or is an argument that can be passed
@@ -17,7 +16,9 @@ module.exports = function (steller) {
     // which connections go from the output nodes.
     function Patch(audioContext, nodeTypes) {
         this._nextID = 1;
-        this._nodes = {destination: {node: audioContext.destination, setup: []}};
+        this._nodes = {
+            destination: { node: audioContext.destination, setup: [] },
+        };
         this._audioContext = audioContext;
         this._constructors = {};
         audioContext.destination._patch_id = "destination";
@@ -51,28 +52,28 @@ module.exports = function (steller) {
         var node = cons.apply(nodeObj, argv) || nodeObj;
         node.constructor = cons;
         argv.unshift(typename);
-        var setup = [{fn: 'node', args: argv}]; // The first setup specifies the patch.node(..) call.
+        var setup = [{ fn: "node", args: argv }]; // The first setup specifies the patch.node(..) call.
         if (!(node.on && node.off && node.emit)) {
             node = Eventable(node);
-            Eventable.observe(node, 'connect');
-            Eventable.observe(node, 'disconnect');
+            Eventable.observe(node, "connect");
+            Eventable.observe(node, "disconnect");
         }
         var id = self._nextID++;
         node._patch = self;
         node._patch_id = id;
         node._patch_typename = typename;
-        self._nodes[id] = {node: node, setup: setup};
+        self._nodes[id] = { node: node, setup: setup };
 
-        // Keep track of connect/disconnect calls so they can 
+        // Keep track of connect/disconnect calls so they can
         // be run again during de-serialization.
-        node.on('connect', function () {
+        node.on("connect", function () {
             var args = Array.prototype.slice.call(arguments, 1);
             args[0] = args[0]._patch_id;
-            setup.push({fn: 'connect', args: args});
+            setup.push({ fn: "connect", args: args });
         });
-        node.on('disconnect', function () {
+        node.on("disconnect", function () {
             var args = Array.prototype.slice.call(arguments, 1);
-            setup.push({fn: 'disconnect', args: args});
+            setup.push({ fn: "disconnect", args: args });
         });
 
         return node;
@@ -84,14 +85,16 @@ module.exports = function (steller) {
     Patch.prototype.label = function (label, node) {
         console.assert(node._patch === this);
         if (this._nodes[label]) {
-            console.warn('Patch.label: Existing label "' + label + '" will be redefined.');
+            console.warn(
+                'Patch.label: Existing label "' + label + '" will be redefined.'
+            );
             this._nodes[label]._patch = null;
             this._nodes[label]._patch_id = null;
         }
         if (label !== node._patch_id) {
             this._nodes[label] = this._nodes[node._patch_id];
             delete this._nodes[node._patch_id];
-            this._nodes[label].setup.push(['label', label]);
+            this._nodes[label].setup.push(["label", label]);
             node._patch_id = label;
         }
         return node;
@@ -118,13 +121,13 @@ module.exports = function (steller) {
     Patch.prototype.save = function () {
         var self = this;
         var json = {
-            type: 'Patch',
+            type: "Patch",
             nodes: Object.keys(self._nodes).map(function (id) {
                 return {
                     id: id,
-            setup: self._nodes[id].setup
+                    setup: self._nodes[id].setup,
                 };
-            })
+            }),
         };
         return json;
     };
@@ -137,12 +140,12 @@ module.exports = function (steller) {
     // of the wrapped model and the parameters of component models to expose
     // to the users of the wrapped model.
     //
-    // name is a name that will be given to the sound model 
+    // name is a name that will be given to the sound model
     // constructor when it is loaded into a graph node.
     //
     // inputs is an array of {node: theNode, pin: inputPinNumber}
     // outputs is an array of {node: theNode, pin: outputPinNumber}
-    // params is an array of {name: paramName, node: nodeLabel, nameInNode: optionalNodeParamName} 
+    // params is an array of {name: paramName, node: nodeLabel, nameInNode: optionalNodeParamName}
     // The current value of the parameters will be snapshotted into the
     // saved model.
     Patch.prototype.saveAsModel = function (name, inputs, outputs, params) {
@@ -157,7 +160,7 @@ module.exports = function (steller) {
         var json = this.save();
 
         function encodePin(pinSpec) {
-            if (pinSpec.hasOwnProperty('pin')) {
+            if (pinSpec.hasOwnProperty("pin")) {
                 return { node: pinSpec.node._patch_id, pin: pinSpec.pin };
             } else {
                 return { node: pinSpec.node._patch_id };
@@ -167,13 +170,15 @@ module.exports = function (steller) {
         function encodeParam(param) {
             return {
                 name: param.name,
-                    node: param.node,
-                    nameInNode: param.nameInNode || param.name,
-                    value: self._nodes[param.node][param.nameInNode || param.name].valueOf()
+                node: param.node,
+                nameInNode: param.nameInNode || param.name,
+                value: self._nodes[param.node][
+                    param.nameInNode || param.name
+                ].valueOf(),
             };
         }
 
-        json.type = 'SoundModel';
+        json.type = "SoundModel";
         json.name = name;
         json.inputs = inputs.map(encodePin);
         json.outputs = outputs.map(encodePin);
@@ -209,9 +214,9 @@ module.exports = function (steller) {
     //
     // Within the constructor function, "this.audioContext" gives
     // access to the audio context within which the instantiation is
-    // happening. The "this" object is expected to be enhanced 
+    // happening. The "this" object is expected to be enhanced
     // by mixing in SoundModel. For example, here is a constructor
-    // for a simple sine model that exposes a live controllable "freq" 
+    // for a simple sine model that exposes a live controllable "freq"
     // parameter.
     //
     //  function sine(freq) {
@@ -221,7 +226,7 @@ module.exports = function (steller) {
     //      osc.connect(this.audioContext.destination);
     //      return steller.SoundModel(this, [], [osc]);
     //  }
-    //  
+    //
     //  If the constructor function has a name, you can omit the
     //  first argument and only pass the function in.
     //
@@ -231,14 +236,16 @@ module.exports = function (steller) {
             typename = spec.name;
         }
 
-        if (typeof spec === 'function') {
+        if (typeof spec === "function") {
             self._constructors[typename] = spec;
-        } else if (spec.type === 'SoundModel') {
+        } else if (spec.type === "SoundModel") {
             self._constructors[typename] = wrapModel(self, spec);
         } else {
-            throw new Error('Invalid model specification type - ' + (typeof spec));
+            throw new Error(
+                "Invalid model specification type - " + typeof spec
+            );
         }
-    };
+    }
 
     // Easier to use wrapper around defineNodeType for defining multiple
     // types in one call. `specs` is either an array of serialized models
@@ -256,19 +263,21 @@ module.exports = function (steller) {
                 defineNodeType(self, typename, specs[typename]);
             });
         } else {
-            throw new Error('Invalid node type collection');
+            throw new Error("Invalid node type collection");
         }
-    };
+    }
 
     // Loader functions for the type types of serialized data.
     // A loader function is of the form function (aPatch, json) { ... }
     // and can return anything it wants.
     var loaders = {
         Patch: function (patch, json) {
-            var idmap = {destination: "destination"};
+            var idmap = { destination: "destination" };
 
             var idspecmap = {};
-            json.nodes.forEach(function (n) { idspecmap[n.id] = n; });
+            json.nodes.forEach(function (n) {
+                idspecmap[n.id] = n;
+            });
 
             function setupNode(nodeid) {
                 if (idmap[nodeid]) {
@@ -276,7 +285,7 @@ module.exports = function (steller) {
                 }
                 var spec = idspecmap[nodeid];
                 var setup = spec.setup;
-                console.assert(setup[0].fn === 'node');
+                console.assert(setup[0].fn === "node");
                 var node = patch.node.apply(patch, setup[0].args);
                 idmap[nodeid] = node._patch_id;
                 for (var i = 1, step, args; i < setup.length; ++i) {
@@ -294,28 +303,34 @@ module.exports = function (steller) {
                 return node;
             }
 
-            json.nodes.forEach(function (spec) { setupNode(spec.id); });
+            json.nodes.forEach(function (spec) {
+                setupNode(spec.id);
+            });
             return patch;
         },
 
         SoundModel: function (patch, json) {
-            return asNode(loaders.Patch(patch, json), json.inputs, json.outputs, json.params);
-        }
+            return asNode(
+                loaders.Patch(patch, json),
+                json.inputs,
+                json.outputs,
+                json.params
+            );
+        },
     };
-
 
     // Takes a SoundModel type JSON object created using saveAsModel().
     //
     // The return value is a constructor function that you can use
     // with any Patch to define a new model type. The argument
-    // to the constructor function is an object whose keys give 
+    // to the constructor function is an object whose keys give
     // parameter names and whose values give the values that the parameters
     // should be set to.
     //
     // The returned constructor has a 'json' property that contains
     // the serialized JSON form of the wrapped model.
     function wrapModel(patch, json) {
-        console.assert(json.type === 'SoundModel');
+        console.assert(json.type === "SoundModel");
 
         function soundModel(paramSettings) {
             var patch2 = new Patch(this.audioContext, patch); // Borrow definitions from patch.
@@ -331,10 +346,10 @@ module.exports = function (steller) {
         soundModel.json = json;
 
         return soundModel;
-    };
+    }
 
     // Given arrays of labels that identify input and output nodes within
-    // the graph set, asNode returns a SoundModel that wraps the entire 
+    // the graph set, asNode returns a SoundModel that wraps the entire
     // subgraph. Note that asNode can itself be used within a constructor
     // function definition to load sound model definitions from a JSON
     // file, for example.
@@ -342,83 +357,115 @@ module.exports = function (steller) {
     // For the specification of inputs, outputs and exposedParams
     // arguments, see Patch.prototype.saveAsModel above.
     function asNode(self, inputs, outputs, exposedParams) {
-
         function labelToInputNode(label) {
             var node = self._nodes[label.node].node;
-            return label.hasOwnProperty('pin') ? node.inputs[label.pin] : node;
+            return label.hasOwnProperty("pin") ? node.inputs[label.pin] : node;
         }
 
         function labelToOutputNode(label) {
             var node = self._nodes[label.node].node;
-            return label.hasOwnProperty('pin') ? node.outputs[label.pin] : node;
+            return label.hasOwnProperty("pin") ? node.outputs[label.pin] : node;
         }
 
         function labelToNode(label) {
             return self._nodes[label].node;
         }
 
-        var sm = steller.SoundModel({}, inputs.map(labelToInputNode), outputs.map(labelToOutputNode));
+        var sm = steller.SoundModel(
+            {},
+            inputs.map(labelToInputNode),
+            outputs.map(labelToOutputNode)
+        );
 
         if (exposedParams) {
             exposedParams.forEach(function (paramID) {
-                sm[paramID.name] = labelToNode(paramID.node)[paramID.nameInNode || paramID.name];
+                sm[paramID.name] = labelToNode(paramID.node)[
+                    paramID.nameInNode || paramID.name
+                ];
                 sm[paramID.name].value = paramID.value;
             });
         }
 
         return sm;
-    };
+    }
 
     function checkInputsSpec(self, inputs) {
         inputs.forEach(function (spec) {
             if (spec.constructor !== Object) {
-                throw new Error('Invalid pin identifier ' + spec);
+                throw new Error("Invalid pin identifier " + spec);
             }
             var node = spec.node;
             if (node._patch !== self) {
                 throw new Error("Node doesn't belong to set.");
             }
-            if (spec.hasOwnProperty('pin')) {
+            if (spec.hasOwnProperty("pin")) {
                 if (!node.inputs[spec.pin]) {
-                    throw new Error('Invalid input pin number ' + spec.pin + ' for node "' + spec.node._patch_id + '". Node has ' + node.inputs.length + ' input pins.');
+                    throw new Error(
+                        "Invalid input pin number " +
+                            spec.pin +
+                            ' for node "' +
+                            spec.node._patch_id +
+                            '". Node has ' +
+                            node.inputs.length +
+                            " input pins."
+                    );
                 }
             }
         });
-    };
+    }
 
     function checkOutputsSpec(self, outputs) {
         outputs.forEach(function (spec) {
             if (spec.constructor !== Object) {
-                throw new Error('Invalid pin identifier ' + spec);
+                throw new Error("Invalid pin identifier " + spec);
             }
             var node = spec.node;
             if (node._patch !== self) {
                 throw new Error("Node doesn't belong to set.");
             }
-            if (spec.hasOwnProperty('pin')) {
+            if (spec.hasOwnProperty("pin")) {
                 if (!node.outputs[spec.pin]) {
-                    throw new Error('Invalid output pin number ' + spec.pin + ' for node "' + spec.node._patch_id + '". Node has ' + node.outputs.length + ' output pins.');
+                    throw new Error(
+                        "Invalid output pin number " +
+                            spec.pin +
+                            ' for node "' +
+                            spec.node._patch_id +
+                            '". Node has ' +
+                            node.outputs.length +
+                            " output pins."
+                    );
                 }
             }
         });
-    };
-
+    }
 
     function checkParamsSpec(self, paramIDs) {
         paramIDs.forEach(function (pid) {
             if (pid.constructor !== Object) {
-                throw new Error('Invalid parameter identifier ' + pid);
+                throw new Error("Invalid parameter identifier " + pid);
             }
             var node;
             var pname = pid.nameInNode || pid.name;
             if (!(node = self.get(pid.node))) {
-                throw new Error('Invalid node label "' + pid.node + '" for parameter "' + pname + '"');
+                throw new Error(
+                    'Invalid node label "' +
+                        pid.node +
+                        '" for parameter "' +
+                        pname +
+                        '"'
+                );
             }
             if (!node.hasOwnProperty(pname)) {
-                throw new Error('Node labelled "' + pid.node + '" does not have a parameter named "' + pname + '"');
+                throw new Error(
+                    'Node labelled "' +
+                        pid.node +
+                        '" does not have a parameter named "' +
+                        pname +
+                        '"'
+                );
             }
-        });        
-    };
+        });
+    }
 
     return Patch;
 };

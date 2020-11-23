@@ -1,7 +1,5 @@
-
 // A DC source with a "level" parameter.
 module.exports = function installer(S, sh) {
-
     var i, N, data, dcBuffer;
     var AC = sh.audioContext;
 
@@ -16,7 +14,6 @@ module.exports = function installer(S, sh) {
         data[i] = 1.0;
     }
 
-
     return function (value) {
         var dc = AC.createBufferSource();
         dc.buffer = dcBuffer;
@@ -28,13 +25,11 @@ module.exports = function installer(S, sh) {
         dc.connect(gain);
 
         var model = S.SoundModel({}, [], [gain]);
-        model.level = S.Param({min: -1.0, max: 1.0, audioParam: gain.gain});
+        model.level = S.Param({ min: -1.0, max: 1.0, audioParam: gain.gain });
         model.stop = function (t) {
             dc.stop(t);
         };
 
         return model;
     };
-
 };
-

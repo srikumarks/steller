@@ -3,7 +3,7 @@
 //
 // Makes an object into a node that can be used in a signal
 // processing graph with the Web Audio API.
-// 
+//
 // node = an object that you want to quack like a node.
 // inputs = array of nodes that have open inputs in the graph.
 // outputs = array of nodes that have open outputs in the graph.
@@ -13,30 +13,32 @@
 // smarter with auto-fanout, auto-mixdown, etc.
 //
 // Note that the graphNode is compositional in nature - i.e. you can
-// treat smaller node graphs as nodes in a larger nor graph, which is what 
+// treat smaller node graphs as nodes in a larger nor graph, which is what
 // you want, I guess.
-// 
-// The above implementation has a disadvantage due to the fact that the 
-// protocol for determining pins *inside* an AudioNode is not exposed. 
-// Therefore you can connect the output of a wrapped node to an input of 
+//
+// The above implementation has a disadvantage due to the fact that the
+// protocol for determining pins *inside* an AudioNode is not exposed.
+// Therefore you can connect the output of a wrapped node to an input of
 // a regular AudioNode, but not vice versa. However, you can wrap any
 // plain AudioNode `n` using `GraphNode({}, [n], [n])` after which
 // you'll have to deal with only wrapped nodes ... and all is well :)
-// 
+//
 // Of course, if you're wrapping all audio nodes anyway, you're free to
 // depart from the "connect" protocol and implement it any way you like :D
 //
 
 function GraphNode(node, inputs, outputs) {
-    node.inputs             = inputs || [];
-    node.outputs            = outputs || [];
+    node.inputs = inputs || [];
+    node.outputs = outputs || [];
 
-    node.numberOfInputs     = node.inputs.length;
-    node.numberOfOutputs    = node.outputs.length;
+    node.numberOfInputs = node.inputs.length;
+    node.numberOfOutputs = node.outputs.length;
     ASSERT(node.numberOfInputs + node.numberOfOutputs > 0);
 
     // Get the audio context this graph is a part of.
-    node.context = (node.inputs[0] && node.inputs[0].context) || (node.outputs[0] && node.outputs[0].context);
+    node.context =
+        (node.inputs[0] && node.inputs[0].context) ||
+        (node.outputs[0] && node.outputs[0].context);
     ASSERT(node.context);
 
     // ### connect
@@ -59,7 +61,10 @@ function GraphNode(node, inputs, outputs) {
          * instead of a wrapped one. */
         inPin = target.inputs ? target.inputs[inIx] : target;
 
-        if (inPin.constructor.name === 'AudioParam' || inPin.constructor.name === 'AudioGain') {
+        if (
+            inPin.constructor.name === "AudioParam" ||
+            inPin.constructor.name === "AudioGain"
+        ) {
             // a-rate connection.
             outPin.connect(inPin);
         } else if (inPin.numberOfInputs === outPin.numberOfOutputs) {
@@ -88,9 +93,11 @@ function GraphNode(node, inputs, outputs) {
                 node.outputs[n].disconnect();
             });
         } else {
-            /* Disconnect all output pins. This is also the 
+            /* Disconnect all output pins. This is also the
              * behaviour of AudioNode.disconnect() */
-            node.outputs.forEach(function (n) { n.disconnect(); });
+            node.outputs.forEach(function (n) {
+                n.disconnect();
+            });
         }
 
         return node;
@@ -128,7 +135,7 @@ function GraphNode(node, inputs, outputs) {
 }
 
 var nextNodeID = 1;
-var nodeIDKey = '#org.anclab.steller.GraphNode.globalid';
+var nodeIDKey = "#org.anclab.steller.GraphNode.globalid";
 
 function getOrAssignNodeID(node) {
     var id = node[nodeIDKey];
@@ -138,7 +145,7 @@ function getOrAssignNodeID(node) {
             value: id,
             writable: false,
             enumerable: false,
-            configurable: false
+            configurable: false,
         });
     }
     return id;
@@ -154,11 +161,9 @@ GraphNode._preservedNodes = {};
 GraphNode.chain = function (nodes) {
     var i, N;
     for (i = 0, N = nodes.length - 1; i < N; ++i) {
-        nodes[i].connect(nodes[i+1]);
+        nodes[i].connect(nodes[i + 1]);
     }
     return GraphNode;
 };
 
 module.exports = GraphNode;
-
-

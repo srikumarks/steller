@@ -36,16 +36,19 @@ module.exports = function installer(S, sh) {
 
     let audioConstraints = {
         audio: {
-            latency: {min: 0.0, max: 0.05, ideal: 0.015},
+            latency: { min: 0.0, max: 0.05, ideal: 0.015 },
             echoCancellation: false,
             autoGainControl: false,
-            noiseSuppression: false
-        }
+            noiseSuppression: false,
+        },
     };
 
     function getUserMedia(dictionary, callback, errback) {
         try {
-            navigator.mediaDevices.getUserMedia(dictionary).then(callback).catch(errback);
+            navigator.mediaDevices
+                .getUserMedia(dictionary)
+                .then(callback)
+                .catch(errback);
         } catch (e) {
             errback(e);
         }
@@ -57,15 +60,15 @@ module.exports = function installer(S, sh) {
         }
 
         if (!micModel.source) {
-            throw new Error('Mic source not initialized');
+            throw new Error("Mic source not initialized");
         }
 
         micModel.source.connect(micModel.outputs[0]);
         micModel.error = null;
         let settings = micModel.stream.getAudioTracks()[0].getSettings();
-        micModel.latency_secs = settings.latency || undefined;  // Latency may not be available,
-                                                                // in which case we mark it as
-                                                                // undefined.
+        micModel.latency_secs = settings.latency || undefined; // Latency may not be available,
+        // in which case we mark it as
+        // undefined.
         micModel.ready.value = 1;
     }
 
@@ -79,11 +82,11 @@ module.exports = function installer(S, sh) {
         // 'ready' parameter = 1 indicates availability of mic,
         // -1 indicates error (in which case you can look at micModel.error)
         // and 0 indicates initialization in progress.
-        micModel.ready = S.Param({min: -1, max: 1, value: 0});
+        micModel.ready = S.Param({ min: -1, max: 1, value: 0 });
 
         // Expose a gain parameter so different parts of the graph can use
         // different gains.
-        micModel.gain = S.Param({min: 0, max: 1, audioParam: micOut.gain});
+        micModel.gain = S.Param({ min: 0, max: 1, audioParam: micOut.gain });
 
         // A model to stop the mic before proceeding.
         micModel.stop = function (sh, clock, next) {
@@ -107,10 +110,11 @@ module.exports = function installer(S, sh) {
                 setupMic(micModel);
                 next(sh, clock, sh.stop);
             } else {
-                // We turn off autoGainControl and such automatic processing 
+                // We turn off autoGainControl and such automatic processing
                 // available with some systems because they generally play havoc
                 // with musical intentions.
-                getUserMedia(audioConstraints,
+                getUserMedia(
+                    audioConstraints,
                     function (stream) {
                         if (stream) {
                             micModel.stream = stream;
@@ -125,7 +129,8 @@ module.exports = function installer(S, sh) {
                         micModel.ready.value = -1;
                         console.error(e);
                         next(sh, clock, sh.stop);
-                    });
+                    }
+                );
             }
         };
 
@@ -140,5 +145,3 @@ module.exports = function installer(S, sh) {
 
     return mic;
 };
-
-

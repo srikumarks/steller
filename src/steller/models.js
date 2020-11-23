@@ -17,21 +17,20 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
 // Must've loaded steller.js before this.
-var chime = require('./models/chime'),
-    dc = require('./models/dc'),
-    noise = require('./models/noise'),
-    noisegate = require('./models/noisegate'),
-    probe = require('./models/probe'),
-    mic = require('./models/mic'),
-    spectrum = require('./models/spectrum'),
-    load_sample = require('./models/load_sample'),
-    sample = require('./models/sample'),
-    jsnode = require('./models/jsnode'),
-    buffer_queue = require('./models/buffer_queue'),
-    hihat = require('./models/hihat');
+var chime = require("./models/chime"),
+    dc = require("./models/dc"),
+    noise = require("./models/noise"),
+    noisegate = require("./models/noisegate"),
+    probe = require("./models/probe"),
+    mic = require("./models/mic"),
+    spectrum = require("./models/spectrum"),
+    load_sample = require("./models/load_sample"),
+    sample = require("./models/sample"),
+    jsnode = require("./models/jsnode"),
+    buffer_queue = require("./models/buffer_queue"),
+    hihat = require("./models/hihat");
 
 module.exports = function maker(S, sh) {
-
     var models = sh.models || (sh.models = {});
     models.chime = chime(S, sh);
     models.dc = dc(S, sh);

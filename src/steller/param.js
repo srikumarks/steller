@@ -24,9 +24,9 @@ function Param(spec) {
     self.spec = spec = processOptionsParam(Object.create(spec));
     self.getter = undefined;
     self.setter = undefined;
-    self.valueOf = undefined;       // Support for valueOf() protocol.
+    self.valueOf = undefined; // Support for valueOf() protocol.
     self.audioParam = undefined;
-    self.watchers = [];             // Maintain a per-parameter list of watchers.
+    self.watchers = []; // Maintain a per-parameter list of watchers.
     self._value = undefined;
 
     // Initialization.
@@ -44,7 +44,7 @@ function Param(spec) {
 
     self.valueOf = self.getter;
 
-    if ('value' in spec) {
+    if ("value" in spec) {
         self.setter(spec.value);
     }
 
@@ -56,25 +56,25 @@ function processOptionsParam(spec) {
     if (spec.options) {
         var hash = {};
         spec.options.forEach(function (o, i) {
-            hash['option:' + o] = i + 1;
+            hash["option:" + o] = i + 1;
         });
 
         // Set a limiting function that validates the
         // value being assigned to the parameter.
         spec.limit = function (val) {
-            if (typeof val === 'number') {
+            if (typeof val === "number") {
                 if (val >= 0 && val < spec.options.length) {
                     return spec.options[val];
-                } 
+                }
 
-                throw new Error('Invalid enumeration index');
-            } 
+                throw new Error("Invalid enumeration index");
+            }
 
-            if (hash['option:' + val]) {
+            if (hash["option:" + val]) {
                 return val;
             }
 
-            throw new Error('Invalid enumeration value');
+            throw new Error("Invalid enumeration value");
         };
     }
     return spec;
@@ -86,7 +86,7 @@ Param.getters = {
     },
     audioParam: function () {
         return this.audioParam.value;
-    }
+    },
 };
 
 Param.setters = {
@@ -98,7 +98,7 @@ Param.setters = {
     },
     option: function (v) {
         return (this._value = this.spec.limit(v));
-    }
+    },
 };
 
 // Use for "mapping:" field of spec. This is not used internally at all, but
@@ -112,7 +112,7 @@ Param.mappings.linear = {
     },
     toNorm: function (p) {
         return (p.value - p.spec.min) / (p.spec.max - p.spec.min);
-    }
+    },
 };
 
 // Condition: spec.max > spec.min > 0
@@ -129,7 +129,7 @@ Param.mappings.log = {
         var lmax = Math.log(spec.max);
         var lval = Math.log(p.value);
         return (lval - lmin) / (lmax - lmin);
-    }
+    },
 };
 
 // Returns the names of all the exposed parameters of obj.
@@ -148,14 +148,17 @@ Param.expose = function (obj1, obj2, listOfParamNames) {
     }
 
     listOfParamNames.forEach(function (n) {
-        WARNIF(n in obj2, "Overwriting parameter named [" + n + "] in Param.expose call.");
+        WARNIF(
+            n in obj2,
+            "Overwriting parameter named [" + n + "] in Param.expose call."
+        );
         obj2[n] = obj1[n];
     });
 
     return Param;
 };
 
-// Bind one parameter to another. p2 is expected to 
+// Bind one parameter to another. p2 is expected to
 // be a parameter. If p1 is a parameter, then bind sets
 // things up so that updating p1 will cause p2 to be updated
 // to the same value. If p1 is just a value, then bind() simply
@@ -167,7 +170,7 @@ Param.expose = function (obj1, obj2, listOfParamNames) {
 Param.bind = function (p1, p2, sh) {
     if (p1 instanceof Param) {
         p1.bind(p2, sh);
-    } else if ('value' in p1) {
+    } else if ("value" in p1) {
         if (sh) {
             sh.update(function () {
                 p2.value = p1.value;
@@ -189,13 +192,13 @@ Param.bind = function (p1, p2, sh) {
 };
 
 // To get the value of a parameter p, use p.value
-Param.prototype.__defineGetter__('value', function () {
+Param.prototype.__defineGetter__("value", function () {
     return this.getter();
 });
 
-// To set the value of a parameter p, do 
+// To set the value of a parameter p, do
 //      p.value = v;
-Param.prototype.__defineSetter__('value', function (val) {
+Param.prototype.__defineSetter__("value", function (val) {
     if (val !== this.getter()) {
         return observeParam(this, this.setter(val));
     } else {
@@ -204,7 +207,9 @@ Param.prototype.__defineSetter__('value', function (val) {
 });
 
 function observeParam(param, val) {
-    var i, N, watchers = param.watchers;
+    var i,
+        N,
+        watchers = param.watchers;
     for (i = 0, N = watchers.length; i < N; ++i) {
         watchers[i](val, param);
     }
@@ -215,7 +220,9 @@ function observeParam(param, val) {
 // value changes. The callback is called like this -
 //      callback(value, paramObject);
 Param.prototype.watch = function (callback) {
-    var i, N, watchers = this.watchers;
+    var i,
+        N,
+        watchers = this.watchers;
 
     /* Make sure the callback isn't already installed. */
     for (i = 0, N = watchers.length; i < N; ++i) {
@@ -240,7 +247,7 @@ Param.prototype.unwatch = function (callback) {
     }
 
     /* Remove the installed watcher. Note that we only need
-     * to check for one watcher because watch() will never 
+     * to check for one watcher because watch() will never
      * add duplicates. */
     for (var i = watchers.length - 1; i >= 0; --i) {
         if (watchers[i] === callback) {
@@ -258,7 +265,7 @@ Param.prototype.changed = function () {
     return this;
 };
 
-// Makes an "alias" parameter - i.e. a parameter that 
+// Makes an "alias" parameter - i.e. a parameter that
 // represents the same value, but has a different name.
 // The alias is constructed such that p.alias("m").alias("n")
 // is equivalent to p.alias("n") - i.e. the original
@@ -280,9 +287,15 @@ Param.prototype.alias = function (name, label) {
     }
 
     // Bind core methods to the original.
-    p.getter = function () { return self.getter(); };
-    p.setter = function (val) { return self.setter(val); };
-    p.alias = function (name, label) { return self.alias(name, label); };
+    p.getter = function () {
+        return self.getter();
+    };
+    p.setter = function (val) {
+        return self.setter(val);
+    };
+    p.alias = function (name, label) {
+        return self.alias(name, label);
+    };
 
     return p;
 };
@@ -292,7 +305,7 @@ Param.prototype.alias = function (name, label) {
 // and whenever the parameter is assigned, the element will also
 // be updated.
 //
-// The "element" can be a DOM element such as a slider, or 
+// The "element" can be a DOM element such as a slider, or
 // anything with a '.value' that needs to be updated with the
 // latest value of this parameter whenever it happens to change.
 // If it is a DOM element, the parameter is setup to update to
@@ -305,44 +318,57 @@ Param.prototype.bind = function (elem, sh) {
     var param = this;
     if (elem.addEventListener) {
         var spec = param.spec;
-        var mapfn = spec.mapping ? Param.mappings[spec.mapping] : Param.mappings.linear;
+        var mapfn = spec.mapping
+            ? Param.mappings[spec.mapping]
+            : Param.mappings.linear;
         var updater;
 
         var onchange, updateElem;
-        if (elem.type === 'checkbox') {
+        if (elem.type === "checkbox") {
             updater = function () {
                 param.value = elem.checked ? 1 : 0;
             };
 
-            onchange = sh ? (function () { sh.update(updater); }) : updater;
+            onchange = sh
+                ? function () {
+                      sh.update(updater);
+                  }
+                : updater;
 
             updateElem = function (v) {
                 elem.checked = v ? true : false;
             };
-        } else if (elem.type === 'range') {
+        } else if (elem.type === "range") {
             updater = function () {
                 param.value = mapfn.fromNorm(param, parseFloat(elem.value));
             };
 
-            onchange = sh ? (function () { sh.update(updater); }) : updater;
+            onchange = sh
+                ? function () {
+                      sh.update(updater);
+                  }
+                : updater;
 
             updateElem = function (v) {
                 elem.value = mapfn.toNorm(param);
             };
         } else {
-            throw new Error('org.anclab.steller.Param.bind: Unsupported control type - ' + elem.type);
+            throw new Error(
+                "org.anclab.steller.Param.bind: Unsupported control type - " +
+                    elem.type
+            );
         }
 
         updateElem.elem = elem;
         updateElem.unbind = function () {
-            elem.removeEventListener('input', onchange);
+            elem.removeEventListener("input", onchange);
             param.unwatch(updateElem);
         };
 
-        elem.addEventListener('input', onchange);
+        elem.addEventListener("input", onchange);
         param.watch(updateElem);
         updateElem(param.value);
-    } else if (typeof elem === 'string') {
+    } else if (typeof elem === "string") {
         var elems = document.querySelectorAll(elem);
         var i, N;
         for (i = 0, N = elems.length; i < N; ++i) {
@@ -368,14 +394,16 @@ Param.prototype.bind = function (elem, sh) {
 // Removes binding to element, where `elem` is the
 // same kind as for `.bind(elem)` above.
 Param.prototype.unbind = function (elem) {
-    if (typeof elem === 'string') {
+    if (typeof elem === "string") {
         var elems = document.querySelectorAll(elem);
         var i, N;
         for (i = 0, N = elems.length; i < N; ++i) {
             this.unbind(elems[i]);
         }
     } else {
-        var i, N, watchers = this.watchers;
+        var i,
+            N,
+            watchers = this.watchers;
         for (i = 0, N = watchers.length; i < N; ++i) {
             if (watchers[i].elem === elem) {
                 watchers[i].unbind();

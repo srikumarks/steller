@@ -1,28 +1,28 @@
-var Queue = require('./queue'),
-    Param = require('./param'),
-    PeriodicTimer = require('./periodictimer'),
-    JSNodeTimer = require('./jsnodetimer'),
-    Clock = require('./clock'),
-    Util = require('./util');
+var Queue = require("./queue"),
+    Param = require("./param"),
+    PeriodicTimer = require("./periodictimer"),
+    JSNodeTimer = require("./jsnodetimer"),
+    Clock = require("./clock"),
+    Util = require("./util");
 
 //
 // ## Scheduler
 //
 // This is a scheduler for "models" .. which are functions
 // of the form --
-// 
+//
 //      function (sched, clock, next) {
 //           // ... do something
 //           next(sched, clock, sched.stop); // Go to the next one (optional).
 //       }
 //
 // where --
-// 
+//
 //   - `sched` is the scheduler object.
-//   - `clock` is the clock object containing absolute and rate integrated 
+//   - `clock` is the clock object containing absolute and rate integrated
 //     time information for this interval.
 //   - `next` is the model that is supposed to follow this one in time.
-// 
+//
 // To use the scheduler, you first make an instance using "new".
 //
 //      var sh = new Scheduler;
@@ -40,15 +40,15 @@ var Queue = require('./queue'),
 //          sh.log('buzz'), sh.delay(dur)
 //      ]));
 //      sh.play(fizzbuzz);
-// 
+//
 // Now try changing the value of the duration parameter p.dur like below
 // while the fizzes and buzzes are being printed out --
-//      
+//
 //      dur.value = 1
 //
 function Scheduler(audioContext, options) {
     /* Make sure we don't clobber the global namespace accidentally. */
-    var self = (this === window ? {} : this);
+    var self = this === window ? {} : this;
     var Timer = PeriodicTimer; // or JSNodeTimer
 
     // We need requestAnimationFrame when scheduling visual animations.
@@ -57,7 +57,9 @@ function Scheduler(audioContext, options) {
     var AudioContext = Util.getAudioContext();
 
     if (Util.detectBrowserEnv() && !requestAnimationFrame) {
-        throw new Error('Scheduler needs requestAnimationFrame support. Use a sufficiently modern browser version.');
+        throw new Error(
+            "Scheduler needs requestAnimationFrame support. Use a sufficiently modern browser version."
+        );
     }
 
     /* How long is an "instant"? */
@@ -67,11 +69,17 @@ function Scheduler(audioContext, options) {
      * The scheduler supports both mechanisms for tracking time. */
     var time_secs = (function () {
         if (!audioContext) {
-            return Util.getHighResPerfTimeFunc() || (function () { return Date.now() * 0.001; });
+            return (
+                Util.getHighResPerfTimeFunc() ||
+                function () {
+                    return Date.now() * 0.001;
+                }
+            );
         } else if (audioContext.createGain || audioContext.createGainNode) {
             instant_secs = 1 / audioContext.sampleRate;
-            audioContext.createGain = audioContext.createGainNode = (audioContext.createGain || audioContext.createGainNode);
-            audioContext.createGainNode();  // Looks useless, but it gets the
+            audioContext.createGain = audioContext.createGainNode =
+                audioContext.createGain || audioContext.createGainNode;
+            audioContext.createGainNode(); // Looks useless, but it gets the
             // audioContext.currentTime running.
             // Otherwise currentTime continues to
             // be at 0 till some API call gets made,
@@ -83,15 +91,17 @@ function Scheduler(audioContext, options) {
         } else {
             throw new Error("Scheduler: Argument is not an audio context");
         }
-    }());
+    })();
 
-
-    var timer, running = false;
+    var timer,
+        running = false;
 
     // To start the scheduler, set "scheduler.running = true"
     // To stop it, set it to false.
-    self.__defineGetter__('running', function () { return running; });
-    self.__defineSetter__('running', function (state) {
+    self.__defineGetter__("running", function () {
+        return running;
+    });
+    self.__defineSetter__("running", function (state) {
         if (state) {
             if (!running) {
                 running = true;
@@ -108,39 +118,41 @@ function Scheduler(audioContext, options) {
             playNow = (function (playNow) {
                 function inactivePlayNow(model) {
                     schedule(model);
-                };
+                }
                 inactivePlayNow.activeFunc = playNow;
                 return inactivePlayNow;
-            }(playNow));
+            })(playNow);
             play = (function (play) {
                 function inactivePlay(model) {
-                    schedule(function () { play(model); });
+                    schedule(function () {
+                        play(model);
+                    });
                 }
                 inactivePlay.activeFunc = play;
                 return inactivePlay;
-            }(play));
+            })(play);
         }
     });
 
     // A frame rate observer that gets updated once in a while.
     // If you want to update a display when frame rate changes,
     // add a watcher.
-    self.frame_rate = Param({min: 15, max: 75, value: 60});
+    self.frame_rate = Param({ min: 15, max: 75, value: 60 });
 
     // Scheduled actions are placed in an event tick queue. The queue is
     // processed on each `scheduleTick()`.  A pair of arrays used as the
     // event tick queue.  Models placed in queue are processed and the
     // resultant models scheduled go into the requeue. Then after one such
     // cycle, the variables are swapped.
-    var queue = new Queue('tick');
+    var queue = new Queue("tick");
 
     // The frame queue is for running visual frame calculations after
     // the normal scheduling loop has finished. This runs *every*
     // scheduleTick.
-    var fqueue = new Queue('frames');
+    var fqueue = new Queue("frames");
 
     // Update queue. This can be used to synchronize parameter changes.
-    var uqueue = new Queue('update');
+    var uqueue = new Queue("update");
 
     // Cancels all currently running actions.
     function cancel() {
@@ -157,7 +169,7 @@ function Scheduler(audioContext, options) {
     timer = new Timer(scheduleTick, 0, audioContext);
 
     /* Keep track of time. */
-    var kFrameInterval = 1/60;
+    var kFrameInterval = 1 / 60;
     var kFrameAdvance = kFrameInterval;
     var clockDt = timer.computeAheadInterval_secs || 0.05; // Use a 60Hz time step.
     var clockBigDt = clockDt * 5; // A larger 10Hz time step.
@@ -176,7 +188,7 @@ function Scheduler(audioContext, options) {
     // instantaneous changes to frame rate don't disrupt the rate for just
     // a few frames.
     var adaptFrameInterval = (function () {
-        var runningFrameInterval = 1/60;
+        var runningFrameInterval = 1 / 60;
         var lastTickTime_secs = mainClock.t1;
 
         // Steller can periodically update the 'frame_rate' property
@@ -194,18 +206,24 @@ function Scheduler(audioContext, options) {
                 clockDt = 3.33 * kFrameInterval;
                 clockBigDt = clockDt * 5;
                 if (frUpdateCounter-- <= 0) {
-                    self.frame_rate.value = Math.round(1/kFrameInterval);
+                    self.frame_rate.value = Math.round(1 / kFrameInterval);
                     frUpdateCounter = frUpdateInterval;
                 }
             }
 
             lastTickTime_secs = t;
         };
-    }());
+    })();
 
     /* Main scheduling work happens here.  */
     function scheduleTick() {
-        var i, N, t, length, f, a, once = true;
+        var i,
+            N,
+            t,
+            length,
+            f,
+            a,
+            once = true;
         t = time_secs();
 
         adaptFrameInterval(t);
@@ -292,8 +310,8 @@ function Scheduler(audioContext, options) {
     // ### perform
     //
     // Wraps the concept of "performing" a model so that
-    // the representation of the model as a continuation 
-    // is not strewn all over the place. 
+    // the representation of the model as a continuation
+    // is not strewn all over the place.
     function perform(model, clock, next) {
         model(self, clock, next);
     }
@@ -325,11 +343,16 @@ function Scheduler(audioContext, options) {
              * take some time on iOS6. This is necessary for Web Audio API
              * on iOS6. Sadly, as of this writing, (22 Sep 2012), this
              * technique is sufficient only for iOS6 on iPhone4. Safari on
-             * iPad doesn't work even with this wait in place. 
+             * iPad doesn't work even with this wait in place.
              */
             return function waitForAudioClockStartAndPlay(model, clock) {
                 if (audioContext.currentTime === 0) {
-                    setTimeout(waitForAudioClockStartAndPlay, 100, model, clock);
+                    setTimeout(
+                        waitForAudioClockStartAndPlay,
+                        100,
+                        model,
+                        clock
+                    );
                 } else if (clock) {
                     self.play = play = playNow;
                     playNow(model, clock);
@@ -343,15 +366,14 @@ function Scheduler(audioContext, options) {
         } else {
             return playNow;
         }
-    }());
+    })();
 
     // ### stop
     //
     // This "model" says "stop right here, nothing more to do."
     // This is the "zero" of the algebra. No model placed after a stop
     // in a sequence will get to run.
-    function stop(sched, clock, next) {
-    }
+    function stop(sched, clock, next) {}
 
     // ### cont
     //
@@ -403,7 +425,7 @@ function Scheduler(audioContext, options) {
                     clock.stop();
                     return;
                 }
-                
+
                 var endTime = startTime + dt.valueOf();
 
                 // If lagging behind, advance time before processing models.
@@ -434,7 +456,13 @@ function Scheduler(audioContext, options) {
 
                 if (clock.t2r < endTime) {
                     if (callback) {
-                        callback(clock, clock.t1r, clock.t2r, startTime, endTime);
+                        callback(
+                            clock,
+                            clock.t1r,
+                            clock.t2r,
+                            startTime,
+                            endTime
+                        );
                     }
                     clock.tick();
                     schedule(poll);
@@ -464,7 +492,7 @@ function Scheduler(audioContext, options) {
     //
     // The two given models will be performed in sequence.
     // When the first model ends, it will transfer control
-    // to the second model. 
+    // to the second model.
     //
     // Note: This is an internal combinator exposed via the
     // more convenient "track".
@@ -477,7 +505,7 @@ function Scheduler(audioContext, options) {
     // ### loop
     //
     // Here is a model that will never end. The given model
-    // will be looped forever. You better have a delay in 
+    // will be looped forever. You better have a delay in
     // there or you'll get an infinite loop or blow the stack
     // or something like that.
     function loop(model) {
@@ -491,7 +519,6 @@ function Scheduler(audioContext, options) {
     // Keeps executing model in a loop as long as flag.valueOf() is truthy.
     function loop_while(flag, model) {
         return function (sched, clock, next) {
-
             function loopWhileFlag() {
                 if (flag.valueOf()) {
                     model(sched, clock, loopWhileFlag);
@@ -532,7 +559,7 @@ function Scheduler(audioContext, options) {
     // When all the models finish their work, the fork will
     // continue on with whatever comes next.
     //
-    //  Ex: 
+    //  Ex:
     //
     //      sh.play(sh.track(sh.fork([drumpat1, drumpat2]), drumpat3));
     //
@@ -605,7 +632,7 @@ function Scheduler(audioContext, options) {
     //
     // Produces a model that consists of a sequence of
     // the given models (given as an array of models).
-    // 
+    //
     // `track([a,b,c,d])` is just short hand for
     // `seq(a, seq(b, seq(c, d)))`
     //
@@ -624,7 +651,8 @@ function Scheduler(audioContext, options) {
             // range for a given track. When the arguments are not given,
             // the whole track is played. Use track_iter.minIndex and maxIndex
             // to determine valid values for the index range.
-            var i = 0, i_end = models.length;
+            var i = 0,
+                i_end = models.length;
 
             if (arguments.length > 3) {
                 ASSERT(arguments.length === 5);
@@ -658,13 +686,16 @@ function Scheduler(audioContext, options) {
     // The `aTrack` is created using the `track()` method.
     // The given indices are constrained by the track's index range
     // as specified by aTrack.minIndex and aTrack.maxIndex.
-    // 
+    //
     // If you want control of a track or a slice *while* it is playing,
     // you need to build synchronization mechanisms into it yourself.
     // See `sync()` and `gate()`.
     function slice(aTrack, startIndex, endIndex) {
-        endIndex = (arguments.length > 2 ? endIndex : aTrack.maxIndex);
-        startIndex = (arguments.length > 1 ? Math.max(aTrack.minIndex, Math.min(startIndex, endIndex)) : aTrack.minIndex);
+        endIndex = arguments.length > 2 ? endIndex : aTrack.maxIndex;
+        startIndex =
+            arguments.length > 1
+                ? Math.max(aTrack.minIndex, Math.min(startIndex, endIndex))
+                : aTrack.minIndex;
         return function (sched, clock, next) {
             aTrack(sched, clock, next, startIndex, endIndex);
         };
@@ -680,7 +711,10 @@ function Scheduler(audioContext, options) {
         fire = function (callback) {
             return function (sched, clock, next) {
                 var t = time_secs();
-                WARNIF(clock.t1 < t, "fire: late by " + Math.round(1000 * (t - clock.t1)) + " ms");
+                WARNIF(
+                    clock.t1 < t,
+                    "fire: late by " + Math.round(1000 * (t - clock.t1)) + " ms"
+                );
                 callback(clock);
                 next(sched, clock, stop);
             };
@@ -705,9 +739,9 @@ function Scheduler(audioContext, options) {
         return function (sched, clock, next) {
             var t1 = clock.t1;
 
-            function show(t) { 
+            function show(t) {
                 if (t + kFrameAdvance > t1) {
-                    callback(clock, t1, t); 
+                    callback(clock, t1, t);
                 } else {
                     // Not yet time to display it. Delay by one
                     // more frame.
@@ -721,7 +755,7 @@ function Scheduler(audioContext, options) {
     }
 
     // ### frame
-    // 
+    //
     // Similar to fire() and display(), but actually lasts one frame
     // duration.  So consecutive frame() actions in a track can be used for
     // frame by frame animation. The frame will be delayed at the time at
@@ -763,7 +797,7 @@ function Scheduler(audioContext, options) {
     // main schedule and will sync to real time irrespective of the amount
     // of "compute ahead" used for audio. Therefore the following actions
     // may begin to run a little before the requested series of callbacks
-    // finish. However, if the following action is also a frames(), then 
+    // finish. However, if the following action is also a frames(), then
     // that will occur strictly (?) after the current frames() finishes,
     // due to the "sync to real time" behaviour.
     //
@@ -778,10 +812,20 @@ function Scheduler(audioContext, options) {
             if (callback) {
                 animTick = function (t, info) {
                     if (info.intervals.length > 0) {
-                        var t1 = info.intervals[0], t1r = info.intervals[1], t2r = info.intervals[2], r = info.intervals[3];
+                        var t1 = info.intervals[0],
+                            t1r = info.intervals[1],
+                            t2r = info.intervals[2],
+                            r = info.intervals[3];
                         if (t1r <= info.endTime) {
-                            if (t1 < kFrameAdvance + t) { 
-                                callback(info.clock, t1r, t2r, info.startTime, info.endTime, r);
+                            if (t1 < kFrameAdvance + t) {
+                                callback(
+                                    info.clock,
+                                    t1r,
+                                    t2r,
+                                    info.startTime,
+                                    info.endTime,
+                                    r
+                                );
                                 info.intervals.splice(0, 4);
                             }
                             scheduleFrame(animTick, info);
@@ -796,7 +840,13 @@ function Scheduler(audioContext, options) {
                     }
                 };
 
-                animInfo = {clock: clock, intervals: [], startTime: clock.t1r, endTime: clock.t1r + dt.valueOf(), end: false};
+                animInfo = {
+                    clock: clock,
+                    intervals: [],
+                    startTime: clock.t1r,
+                    endTime: clock.t1r + dt.valueOf(),
+                    end: false,
+                };
                 scheduleFrame(animTick, animInfo);
             }
 
@@ -828,7 +878,10 @@ function Scheduler(audioContext, options) {
 
                         if (animInfo.intervals.length > 4) {
                             // Leave only one frame in the queue intact.
-                            animInfo.intervals.splice(0, animInfo.intervals.length - 4);
+                            animInfo.intervals.splice(
+                                0,
+                                animInfo.intervals.length - 4
+                            );
                         }
 
                         if (animInfo.intervals.length > 0) {
@@ -893,7 +946,7 @@ function Scheduler(audioContext, options) {
     // ### Parameter animation curves.
     //
     // #### anim(param, dur, func)
-    // func is expected to be a function (t) where t is 
+    // func is expected to be a function (t) where t is
     // in the range [0,1]. The given parameter will be assigned
     // the value of the function over the given duration.
     //
@@ -922,25 +975,26 @@ function Scheduler(audioContext, options) {
     function anim(param, dur) {
         var v1, v2, func, afunc;
         switch (arguments.length) {
-            case 3: /* Third argument must be a function. */
+            case 3 /* Third argument must be a function. */:
                 afunc = arguments[2];
                 break;
-            case 4: /* Third and fourth arguments are starting
-                     * and ending values over the duration. */
-                v1 = arguments[2];
+            case 4:
+                /* Third and fourth arguments are starting
+                 * and ending values over the duration. */ v1 = arguments[2];
                 v2 = arguments[3];
-                afunc = function (f) { 
-                    return (1 - f ) * v1.valueOf() + f * v2.valueOf(); 
+                afunc = function (f) {
+                    return (1 - f) * v1.valueOf() + f * v2.valueOf();
                 };
                 break;
-            case 5: /* Third and fourth are v1, and v2 and fifth is
-                     * a function(fractionalTime) whose return value is
-                     * in the range [0,1] which is remapped to [v1,v2].
-                     * i.e. the function is an interpolation function. */
-                v1 = arguments[2];
+            case 5:
+                /* Third and fourth are v1, and v2 and fifth is
+                 * a function(fractionalTime) whose return value is
+                 * in the range [0,1] which is remapped to [v1,v2].
+                 * i.e. the function is an interpolation function. */ v1 =
+                    arguments[2];
                 v2 = arguments[3];
                 func = arguments[4];
-                afunc = function (frac) { 
+                afunc = function (frac) {
                     var f = func(frac);
                     return (1 - f) * v1.valueOf() + f * v2.valueOf();
                 };
@@ -950,7 +1004,10 @@ function Scheduler(audioContext, options) {
                 throw new Error("Invalid arguments to anim()");
         }
 
-        if (param.constructor.name === 'AudioGain' || param.constructor.name === 'AudioParam') {
+        if (
+            param.constructor.name === "AudioGain" ||
+            param.constructor.name === "AudioParam"
+        ) {
             // Use linear ramp for audio parameters.
             return delay(dur, function (clock, t1, t2, startTime, endTime) {
                 var dt = endTime - startTime;
@@ -981,7 +1038,7 @@ function Scheduler(audioContext, options) {
                     param.value = afunc((t1 - startTime) / dt);
                 } else {
                     // If we're generating only one value because the
-                    // animation duration is very short, make it 
+                    // animation duration is very short, make it
                     // the final value.
                     param.value = afunc(1);
                 }
@@ -1036,7 +1093,7 @@ function Scheduler(audioContext, options) {
                     syncs.push(sync());
                 }
                 return syncs;
-            }(0, N, []));
+            })(0, N, []);
         }
 
         var models = [];
@@ -1049,7 +1106,7 @@ function Scheduler(audioContext, options) {
                 for (i = 0, N = actions.length; i < N; ++i) {
                     actions[i](sched, clock.copy(), stop);
                 }
-            } 
+            }
 
             next(sched, clock, stop);
         }
@@ -1071,7 +1128,7 @@ function Scheduler(audioContext, options) {
     //
     // Another synchronization option. You make a gate and use it at
     // various points. You can then close() and open() gate. A newly
-    // created gate doesn't block by default. 
+    // created gate doesn't block by default.
     //
     // You can use gate() as a primitive to implement context aware
     // pause/resume. You make a `gate()` instance `g` first and introduce
@@ -1079,12 +1136,12 @@ function Scheduler(audioContext, options) {
     // to pause/resume. You can then pause your composition by calling
     // `g.close()` and resume it by calling `g.open()`.
     //
-    // Other methods of a gate include - 
-    //  
-    //  - g.toggle() 
+    // Other methods of a gate include -
+    //
+    //  - g.toggle()
     //  - g.isOpen property gives open status of gate.
     //  - g.cancel() discards all pending resume actions.
-    //      
+    //
     function gate(N) {
         if (arguments.length > 0) {
             // If N is given, make that many gates.
@@ -1093,7 +1150,7 @@ function Scheduler(audioContext, options) {
                     gates.push(gate());
                 }
                 return gates;
-            }(0, N, []));
+            })(0, N, []);
         }
 
         var cache = [];
@@ -1105,22 +1162,31 @@ function Scheduler(audioContext, options) {
                 next(sched, clock, stop);
             } else {
                 // Cache this and wait.
-                cache.push({sched: sched, next: next, clock: clock});
+                cache.push({ sched: sched, next: next, clock: clock });
             }
         }
 
         function release(clock) {
             var actions = cache;
-            var i, N, a, t = time_secs();
+            var i,
+                N,
+                a,
+                t = time_secs();
             cache = [];
             for (i = 0, N = actions.length; i < N; ++i) {
                 a = actions[i];
-                a.next(a.sched, clock ? clock.copy() : a.clock.advanceTo(t), stop);
+                a.next(
+                    a.sched,
+                    clock ? clock.copy() : a.clock.advanceTo(t),
+                    stop
+                );
             }
         }
 
-        gateModel.__defineGetter__('isOpen', function () { return isOpen; });
-        gateModel.__defineSetter__('isOpen', function (v) {
+        gateModel.__defineGetter__("isOpen", function () {
+            return isOpen;
+        });
+        gateModel.__defineSetter__("isOpen", function (v) {
             if (v) {
                 gateModel.open();
             } else {
@@ -1160,7 +1226,7 @@ function Scheduler(audioContext, options) {
         };
 
         gateModel.push = function (sched, clock, next) {
-            state_stack.push({isOpen: isOpen, cache: cache});
+            state_stack.push({ isOpen: isOpen, cache: cache });
             cache = [];
             if (next) {
                 next(sched, clock, stop);
@@ -1181,7 +1247,7 @@ function Scheduler(audioContext, options) {
 
     function stats() {
         return {
-            frame_jitter_ms: 0
+            frame_jitter_ms: 0,
         };
     }
 
@@ -1190,12 +1256,12 @@ function Scheduler(audioContext, options) {
     // notation into a scheduler spec that can be played using sh.play().
     //
     // Towards this, I've now added a "specFromJSON" method to the scheduler
-    // that does such a transformation. 
+    // that does such a transformation.
     //
     // specFromJSON accepts an object and parses its key-value associations to
     // determine which scheduler models to build. For example, if the
     // object is of the form {track: [m1, m2, ..]}, then a "track" model
-    // is built and the sub-models m1, m2, .. are recursively parsed for 
+    // is built and the sub-models m1, m2, .. are recursively parsed for
     // similar object properties.
     //
     // An additional "vocabulary" structure can be passed to "specFromJSON" to
@@ -1226,7 +1292,7 @@ function Scheduler(audioContext, options) {
     // form using the "$" key like this - {$: anyObject}.
     //
     // Example:
-    //  Here is a new vocabulary called "majchord" that will play a 
+    //  Here is a new vocabulary called "majchord" that will play a
     //  major chord using the chime model, given a reference pitch number.
     //
     //  var ch = sh.models.chime().connect();
@@ -1248,16 +1314,16 @@ function Scheduler(audioContext, options) {
     //  var majchord = sh.specFromJSON({track: [{majchord: [72, 1.0]}, {majchord: [74, 1.0]}]}, vocab);
 
     var sh_vocab = {
-        delay:      {convertArgs: true, fn: delay},
-        loop:       {convertArgs: true, fn: loop},
-        loop_while: {convertArgs: true, fn: loop_while},
-        repeat:     {convertArgs: true, fn: repeat},
-        fork:       {convertArgs: true, fn: fork},
-        spawn:      {convertArgs: true, fn: spawn},
-        track:      {convertArgs: true, fn: track},
-        anim:       {convertArgs: true, fn: anim},
-        rate:       {convertArgs: true, fn: rate},
-        choice:     {convertArgs: true, fn: choice}
+        delay: { convertArgs: true, fn: delay },
+        loop: { convertArgs: true, fn: loop },
+        loop_while: { convertArgs: true, fn: loop_while },
+        repeat: { convertArgs: true, fn: repeat },
+        fork: { convertArgs: true, fn: fork },
+        spawn: { convertArgs: true, fn: spawn },
+        track: { convertArgs: true, fn: track },
+        anim: { convertArgs: true, fn: anim },
+        rate: { convertArgs: true, fn: rate },
+        choice: { convertArgs: true, fn: choice },
     };
 
     function specFromJSON(json, vocab) {
@@ -1270,7 +1336,9 @@ function Scheduler(audioContext, options) {
         // respect the order in which keys were inserted when
         // enumerating keys.
         var key = null;
-        for (key in json) { break; }
+        for (key in json) {
+            break;
+        }
 
         // Since modelFromJSON recursively transforms all
         // objects, treating everyone as a scheduler model
@@ -1278,18 +1346,23 @@ function Scheduler(audioContext, options) {
         // "don't touch this". You can pass through any
         // value untouched by wrapping it into a quote
         // form which looks like {$: anyObject}.
-        if (key === '$') {
+        if (key === "$") {
             return json.$;
         }
 
         var impl = (vocab && vocab[key]) || sh_vocab[key];
-        if (!impl) { throw new Error('Unknown vocabulary : ' + key); }
+        if (!impl) {
+            throw new Error("Unknown vocabulary : " + key);
+        }
 
-        var args = json[key], keys;
+        var args = json[key],
+            keys;
         if (args.constructor === Array) {
             // Recursively process all JSON object forms.
             if (impl.convertArgs) {
-                args = args.map(function (arg) { return specFromJSON(arg, vocab); });
+                args = args.map(function (arg) {
+                    return specFromJSON(arg, vocab);
+                });
             }
         } else if (args.constructor === Object) {
             args = [impl.convertArgs ? specFromJSON(args, vocab) : args];
@@ -1304,52 +1377,52 @@ function Scheduler(audioContext, options) {
             return impl.fn.apply(json, args);
         }
 
-        throw new Error('Bad vocabulary specification');
+        throw new Error("Bad vocabulary specification");
     }
 
-    self.audioContext   = audioContext;
-    self.update         = scheduleUpdate;
-    self.perform        = perform;
-    self.cancel         = cancel;
-    self.clock          = clock;
-    self.play           = play;
-    self.stop           = stop;
-    self.cont           = cont;
-    self.delay          = delay;
-    self.loop           = loop;
-    self.loop_while     = loop_while;
-    self.repeat         = repeat;
-    self.fork           = fork;
-    self.spawn          = spawn;
-    self.dynamic        = dynamic;
-    self.track          = track;
-    self.slice          = slice;
-    self.fire           = fire;
-    self.display        = display;
-    self.frame          = frame;
-    self.frames         = frames;
-    self.log            = log;
-    self.anim           = anim;
-    self.rate           = rate;
-    self.choice         = choice;
-    self.sync           = sync;
-    self.gate           = gate;
-    self.stats          = stats;
-    self.specFromJSON   = specFromJSON;
+    self.audioContext = audioContext;
+    self.update = scheduleUpdate;
+    self.perform = perform;
+    self.cancel = cancel;
+    self.clock = clock;
+    self.play = play;
+    self.stop = stop;
+    self.cont = cont;
+    self.delay = delay;
+    self.loop = loop;
+    self.loop_while = loop_while;
+    self.repeat = repeat;
+    self.fork = fork;
+    self.spawn = spawn;
+    self.dynamic = dynamic;
+    self.track = track;
+    self.slice = slice;
+    self.fire = fire;
+    self.display = display;
+    self.frame = frame;
+    self.frames = frames;
+    self.log = log;
+    self.anim = anim;
+    self.rate = rate;
+    self.choice = choice;
+    self.sync = sync;
+    self.gate = gate;
+    self.stats = stats;
+    self.specFromJSON = specFromJSON;
 
     // Start the scheduler by default. I decided to do this because
-    // so far on many occasions I've spent considerable time in 
+    // so far on many occasions I've spent considerable time in
     // debugging an unexpected outcome simply because I forgot to
     // start the scheduler. Shows I have an expectation that once
     // a "new Scheduler" is created, it is expected to be up and
     // running. Hence this choice of a default. If you really
     // need it to be quiet upon start, provide an "options.running = false"
     // in the second argument.
-    self.running = (options && ('running' in options) && options.running) || true;
+    self.running = (options && "running" in options && options.running) || true;
 
     // If the Models collection is available, instantiate it for
     // this scheduler so that the user won't have to bother doing that
-    // separately.         
+    // separately.
     try {
         Scheduler.Models(self);
     } catch (e) {
@@ -1357,6 +1430,6 @@ function Scheduler(audioContext, options) {
     }
 
     return self;
-};
+}
 
 module.exports = Scheduler;

@@ -3,16 +3,16 @@
 //
 // The builtin Javascript Audio node is not as capable as the other
 // native nodes in that it cannot have AudioParams and it only has one
-// input and one output, albeit with multiple channels. 
+// input and one output, albeit with multiple channels.
 //
 // This model expands the API of the javascript audio node by giving
-// it multiple single channel inputs and outputs instead and audioParams 
+// it multiple single channel inputs and outputs instead and audioParams
 // that can be set and scheduled similar to other native nodes.
 //
 // One major limitation is that the inputs to the jsnode are limited
 // to single-channel pins. This can in principle be lifted, but would
 // complicate the API at the moment and is perhaps not all that useful.
-// So I've decided to live with the single-channel restriction for the 
+// So I've decided to live with the single-channel restriction for the
 // moment.
 //
 // var jsn = models.jsnode({
@@ -28,18 +28,18 @@
 //          // The following are all Float32Arrays you can access -
 //          //      event.inputs[i]
 //          //      event.outputs[i]
-//          //      event.gain, 
-//          //      event.pitch, 
+//          //      event.gain,
+//          //      event.pitch,
 //          //      event.frequencyMod
 //          //
 //          // 'this' will refer to the jsn model object within this
 //          // handler. So you can access other model parameters and methods.
 //
-//          // Return the number of samples processed. If you 
+//          // Return the number of samples processed. If you
 //          // return any value that is less than the length
 //          // of the output buffer passed, it is taken as a signal
 //          // to end the jsnode and cleanup. This can also be used
-//          // to finish stuff like a reverb tail before killing 
+//          // to finish stuff like a reverb tail before killing
 //          // the node. `event.samplesToStop` gives the number of
 //          // samples to generate before the indicated stop time
 //          // arrives. This information can be used to determine
@@ -58,11 +58,12 @@
 module.exports = function installer(S, sh) {
     var AC = sh.audioContext;
     return function jsnode(spec) {
-
         // Map inputs to merger inputs numbered [0, spec.numInputs)
         // Map params to merger inputs numbered [spec.numInputs, spec.numInputs + numParams)
         // Map outputs to splitter outputs numbered [0, spec.numOutputs)
-        var numParams = spec.audioParams ? Object.keys(spec.audioParams).length : 0;
+        var numParams = spec.audioParams
+            ? Object.keys(spec.audioParams).length
+            : 0;
         var numberOfInputs = spec.numberOfInputs || 0;
         var numberOfOutputs = spec.numberOfOutputs || 1;
         var numInputs = numberOfInputs + numParams;
@@ -72,8 +73,10 @@ module.exports = function installer(S, sh) {
         ASSERT(numberOfOutputs >= 0);
         ASSERT(numOutputs > 0);
 
-        var merger = numInputs > 0 ? AC.createChannelMerger(numInputs) : undefined;
-        var splitter = numOutputs > 0 ? AC.createChannelSplitter(numOutputs) : undefined;
+        var merger =
+            numInputs > 0 ? AC.createChannelMerger(numInputs) : undefined;
+        var splitter =
+            numOutputs > 0 ? AC.createChannelSplitter(numOutputs) : undefined;
         var inputNodes = [];
         var i, N, node;
         for (i = 0, N = numInputs; i < N; ++i) {
@@ -92,9 +95,9 @@ module.exports = function installer(S, sh) {
         var paramNames;
         if (spec.audioParams) {
             paramNames = Object.keys(spec.audioParams);
-            ASSERT(!('inputs' in spec.audioParams));
-            ASSERT(!('outputs' in spec.audioParams));
-            ASSERT(!('playbackTime' in spec.audioParams));
+            ASSERT(!("inputs" in spec.audioParams));
+            ASSERT(!("outputs" in spec.audioParams));
+            ASSERT(!("playbackTime" in spec.audioParams));
         } else {
             paramNames = [];
         }
@@ -104,7 +107,8 @@ module.exports = function installer(S, sh) {
         // hidden class of obj will not change within onaudioprocess.
         var obj = {};
 
-        var inputs = [], outputs = [];
+        var inputs = [],
+            outputs = [];
         obj.inputs = inputs;
         obj.outputs = outputs;
         for (i = 0, N = paramNames.length; i < N; ++i) {
@@ -112,11 +116,19 @@ module.exports = function installer(S, sh) {
         }
         obj.playbackTime = AC.currentTime;
 
-        var hasStarted = false, hasFinished = false, startTime = 0, stopTime = Infinity;
+        var hasStarted = false,
+            hasFinished = false,
+            startTime = 0,
+            stopTime = Infinity;
         var autoDestroy;
 
         var onaudioprocess = function (event) {
-            var i, N, t, t1, t2, samplesOutput = 0;
+            var i,
+                N,
+                t,
+                t1,
+                t2,
+                samplesOutput = 0;
 
             if (hasFinished) {
                 return;
@@ -134,18 +146,26 @@ module.exports = function installer(S, sh) {
             if (t2 > t1) {
                 // Prepare the buffers for access by the nested onaudioprocess handler.
                 for (i = 0, N = numberOfInputs; i < N; ++i) {
-                    inputs[i] = event.inputBuffer.getChannelData(i).subarray(dt1, dt2);
+                    inputs[i] = event.inputBuffer
+                        .getChannelData(i)
+                        .subarray(dt1, dt2);
                 }
                 for (i = 0, N = numOutputs; i < N; ++i) {
-                    outputs[i] = event.outputBuffer.getChannelData(i).subarray(dt1, dt2);
+                    outputs[i] = event.outputBuffer
+                        .getChannelData(i)
+                        .subarray(dt1, dt2);
                 }
 
                 for (i = 0, N = paramNames.length; i < N; ++i) {
-                    obj[paramNames[i]] = event.inputBuffer.getChannelData(numberOfInputs + i).subarray(dt1, dt2);
+                    obj[paramNames[i]] = event.inputBuffer
+                        .getChannelData(numberOfInputs + i)
+                        .subarray(dt1, dt2);
                 }
 
-                obj.playbackTime = (event.playbackTime || AC.currentTime) + dt1 / AC.sampleRate;
-                obj.samplesToStop = stopTime - t1; 
+                obj.playbackTime =
+                    (event.playbackTime || AC.currentTime) +
+                    dt1 / AC.sampleRate;
+                obj.samplesToStop = stopTime - t1;
                 // samplesToStop gives number of samples of output remaining
                 // before the node is expected to "stop". The node can,
                 // however continue beyond the stop time by generating
@@ -167,12 +187,15 @@ module.exports = function installer(S, sh) {
                     // then assume that it generates a whole buffer's worth.
                     samplesOutput = t2 - t1;
                 }
-            } 
+            }
 
             if (t1 + samplesOutput < t2) {
                 LOG(1, "Finished", t2, stopTime);
                 hasFinished = true;
-                setTimeout(autoDestroy, Math.round(bufferLength * 1000 / AC.sampleRate));
+                setTimeout(
+                    autoDestroy,
+                    Math.round((bufferLength * 1000) / AC.sampleRate)
+                );
             }
         };
 
@@ -193,12 +216,22 @@ module.exports = function installer(S, sh) {
 
             // Make sure the user isn't shooting him/herself in
             // the foot by duplicate mentions of param names.
-            ASSERT(!(paramNames[i] in obj), "Duplicate param name - ", paramNames[i]);
+            ASSERT(
+                !(paramNames[i] in obj),
+                "Duplicate param name - ",
+                paramNames[i]
+            );
         });
 
         var kBufferLength = spec.bufferLength || 512;
-        var jsn = sm.keep(AC.createScriptProcessor(kBufferLength, numInputs, Math.max(1, numOutputs)));
-        merger && merger.connect(jsn); 
+        var jsn = sm.keep(
+            AC.createScriptProcessor(
+                kBufferLength,
+                numInputs,
+                Math.max(1, numOutputs)
+            )
+        );
+        merger && merger.connect(jsn);
         jsn.onaudioprocess = onaudioprocess;
         var jsnDestination = splitter || AC.destination;
 
@@ -210,7 +243,7 @@ module.exports = function installer(S, sh) {
             dc && (dc.stop(0), dc.disconnect());
             merger && merger.disconnect();
             sm.drop(jsn);
-            sm.emit && sm.emit('ended'); // Indicate that it's all over.
+            sm.emit && sm.emit("ended"); // Indicate that it's all over.
         };
 
         var startTimer;
@@ -231,7 +264,7 @@ module.exports = function installer(S, sh) {
 
             if (t) {
                 // Schedule for the future, maybe.
-                var dt = (Math.max(t, AC.currentTime) - AC.currentTime);
+                var dt = Math.max(t, AC.currentTime) - AC.currentTime;
 
                 if (startTimer) {
                     cancelTimeout(startTimer);
@@ -248,7 +281,11 @@ module.exports = function installer(S, sh) {
                 if (dt <= sm.prepareAheadTime) {
                     starter(t);
                 } else {
-                    startTimer = setTimeout(starter, Math.round(1000 * (dt - sm.prepareAheadTime)), t);
+                    startTimer = setTimeout(
+                        starter,
+                        Math.round(1000 * (dt - sm.prepareAheadTime)),
+                        t
+                    );
                 }
             } else {
                 // Schedule immediately.
@@ -280,5 +317,3 @@ module.exports = function installer(S, sh) {
         return sm;
     };
 };
-
-

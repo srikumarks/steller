@@ -8,7 +8,7 @@
 // .time is a parameter whose value gives the time at which the spectrum was grabbed last.
 //      You can 'watch' this parameter to be notified of each grab.
 //
-// You must run the .start action to start grabbing. You can stop 
+// You must run the .start action to start grabbing. You can stop
 // using the .stop action.
 module.exports = function installer(S, sh) {
     var AC = sh.audioContext;
@@ -18,17 +18,18 @@ module.exports = function installer(S, sh) {
         var analyser = AC.createAnalyser();
         analyser.fftSize = N * 2;
         analyser.frequencyBinCount = N;
-        analyser.smoothingTimeConstant = arguments.length < 2 ? 0.1 : smoothingFactor;
+        analyser.smoothingTimeConstant =
+            arguments.length < 2 ? 0.1 : smoothingFactor;
         // Note that the analyser doesn't need to be connected to AC.destination.
 
         var model = S.SoundModel({}, [analyser], []);
         model.bins = new Float32Array(N);
         model.freqs = new Float32Array(N);
-        model.time = S.Param({min: 0, max: 1e9, value: 0});
+        model.time = S.Param({ min: 0, max: 1e9, value: 0 });
 
         // Compute the frequencies of the bins.
         for (var i = 0; i < N; ++i) {
-            model.freqs[i] = i * AC.sampleRate / analyser.fftSize;
+            model.freqs[i] = (i * AC.sampleRate) / analyser.fftSize;
         }
 
         var grabRequest;
@@ -39,7 +40,11 @@ module.exports = function installer(S, sh) {
                 analyser.getFloatFrequencyData(model.bins);
 
                 // Convert from decibels to power.
-                for (var i = 0, bins = model.bins, N = bins.length; i < N; ++i) {
+                for (
+                    var i = 0, bins = model.bins, N = bins.length;
+                    i < N;
+                    ++i
+                ) {
                     bins[i] = Math.pow(10, bins[i] / 20);
                 }
 
@@ -64,5 +69,3 @@ module.exports = function installer(S, sh) {
         return model;
     };
 };
-
-

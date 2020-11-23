@@ -16,9 +16,24 @@ module.exports = function installer(S, sh) {
 
         // halfLife parameter determines the amplitude decay half life (in secs) of
         // a ting at 440Hz.
-        model.halfLife = S.Param({min: 0.001, max: 10, value: 0.5, mapping: 'log'});
-        model.attackTime = S.Param({min: 0.001, max: 1.0, value: 0.01, mapping: 'log'});
-        model.level = S.Param({min: 0.125, max: 4.0, audioParam: output.gain, mapping: 'log'});
+        model.halfLife = S.Param({
+            min: 0.001,
+            max: 10,
+            value: 0.5,
+            mapping: "log",
+        });
+        model.attackTime = S.Param({
+            min: 0.001,
+            max: 1.0,
+            value: 0.01,
+            mapping: "log",
+        });
+        model.level = S.Param({
+            min: 0.125,
+            max: 4.0,
+            audioParam: output.gain,
+            mapping: "log",
+        });
 
         function trigger(clock, pitchNumber, velocity) {
             var f = S.Util.p2f(pitchNumber.valueOf());
@@ -29,11 +44,18 @@ module.exports = function installer(S, sh) {
             var gain = AC.createGainNode();
             gain.gain.value = 0;
             gain.gain.setValueAtTime(0, clock.t1);
-            gain.gain.linearRampToValueAtTime(velocity.valueOf() / 8, clock.t1 + model.attackTime.value);
+            gain.gain.linearRampToValueAtTime(
+                velocity.valueOf() / 8,
+                clock.t1 + model.attackTime.value
+            );
 
-            var halfLife = model.halfLife.value * 440 / f;
+            var halfLife = (model.halfLife.value * 440) / f;
             var dur = halfLife * 10;
-            gain.gain.setTargetAtTime(0, clock.t1 + model.attackTime.value, halfLife);
+            gain.gain.setTargetAtTime(
+                0,
+                clock.t1 + model.attackTime.value,
+                halfLife
+            );
 
             osc.connect(gain);
             gain.connect(output);
@@ -70,4 +92,3 @@ module.exports = function installer(S, sh) {
         return model;
     };
 };
-

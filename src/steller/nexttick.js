@@ -9,7 +9,10 @@
 // of the event loop.
 
 var nextTick = (function () {
-    if (typeof process !== "undefined" && typeof process.nextTick === 'function') {
+    if (
+        typeof process !== "undefined" &&
+        typeof process.nextTick === "function"
+    ) {
         // node
         return process.nextTick;
     } else if (typeof setImmediate === "function") {
@@ -20,7 +23,8 @@ var nextTick = (function () {
         // http://www.nonblocking.io/2011/06/windownexttick.html
         var channel = new MessageChannel();
         // linked list of tasks (single, with head node)
-        var head = {}, tail = head;
+        var head = {},
+            tail = head;
         channel.port1.onmessage = function () {
             head = head.next;
             var task = head.task;
@@ -28,15 +32,15 @@ var nextTick = (function () {
             task();
         };
         return function (task) {
-            tail = tail.next = {task: task};
+            tail = tail.next = { task: task };
             channel.port2.postMessage(0);
         };
-    } else if (typeof Image !== 'undefined') {
+    } else if (typeof Image !== "undefined") {
         // Fast hack for not so modern browsers.
         return function (task) {
             var img = new Image();
             img.onerror = task;
-            img.src = 'data:image/png,' + Math.random();
+            img.src = "data:image/png," + Math.random();
         };
     } else {
         // Worst case.
@@ -44,8 +48,6 @@ var nextTick = (function () {
             return setTimeout(task, 0);
         };
     }
-}());
+})();
 
 module.exports = nextTick;
-
-

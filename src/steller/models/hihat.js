@@ -19,18 +19,32 @@ module.exports = function installer(S, sh) {
         var output = AC.createGainNode();
         var model = S.SoundModel({}, [], [output]);
 
-        model.fundamental = S.Param({min: 20.0, max: 100.0, value: 40.0, mapping: 'log'});
-        model.bandpass = S.Param({min: 5000, max: 20000, value: 10000, mapping: 'log'});
-        model.highpass = S.Param({min: 3500, max: 14000, value: 7000, mapping: 'log'});
-        model.level = S.Param({min: 0.0, max: 10.0, audioParam: output.gain});
+        model.fundamental = S.Param({
+            min: 20.0,
+            max: 100.0,
+            value: 40.0,
+            mapping: "log",
+        });
+        model.bandpass = S.Param({
+            min: 5000,
+            max: 20000,
+            value: 10000,
+            mapping: "log",
+        });
+        model.highpass = S.Param({
+            min: 3500,
+            max: 14000,
+            value: 7000,
+            mapping: "log",
+        });
+        model.level = S.Param({ min: 0.0, max: 10.0, audioParam: output.gain });
 
         function trigger(clock, velocity) {
-
             // The clock gives the absolute audio time to schedule this event at.
             var when = clock.t1;
-            
+
             var vel = velocity.valueOf(); // Doing this permits velocity to be either a number or a Param.
-            var dur = 0.3 * (1.0 + vel) / 2.0; // Shorten the duration for lower velocities.
+            var dur = (0.3 * (1.0 + vel)) / 2.0; // Shorten the duration for lower velocities.
 
             var gain = AC.createGain();
             var fundamental = model.fundamental.valueOf();
@@ -71,7 +85,7 @@ module.exports = function installer(S, sh) {
         // You can play multiple chimes all mixed into the same output gain node.
         // Note that there is no standard way to "play" or "stop" any sound model.
         // This is left open since models may need different behaviours in this
-        // regard. 
+        // regard.
         model.hit = function (velocity, duration) {
             if (velocity === undefined) {
                 velocity = 1.0;
@@ -85,4 +99,3 @@ module.exports = function installer(S, sh) {
         return model;
     };
 };
-

@@ -24,20 +24,35 @@ module.exports = function installer(S, sh) {
     //      `theSound.trigger(velocity)` is an action to play a loaded sound like drum hit.
     //          velocity is in the range [0,1.0]. The sound is always played at rate 1.0.
     //      `theSound.play` will play the sound from start to finish and will respond to
-    //          the clock's rate control. The sound will first be loaded if not loaded 
+    //          the clock's rate control. The sound will first be loaded if not loaded
     //          already.
     //      `theSound.note(pitch, startOffset, duration, activeDur)` will play the sound
     //          starting from the given offset, lasting for the given duration, with the
-    //          sound switching into release after `activeDur`. `pitch` is a live rate 
+    //          sound switching into release after `activeDur`. `pitch` is a live rate
     //          factor control.
     var sample = function (url, errback) {
         var level = AC.createGainNode();
         level.gain.value = 0.25;
 
         var model = S.SoundModel({}, [], [level]);
-        model.level = S.Param({min: 0.001, max: 10, audioParam: level.gain, mapping: 'log'});
-        model.attackTime = S.Param({min: 0.001, max: 10.0, value: 0.02, mapping: 'log'});
-        model.releaseTime = S.Param({min: 0.001, max: 10.0, value: 0.1, mapping: 'log'});
+        model.level = S.Param({
+            min: 0.001,
+            max: 10,
+            audioParam: level.gain,
+            mapping: "log",
+        });
+        model.attackTime = S.Param({
+            min: 0.001,
+            max: 10.0,
+            value: 0.02,
+            mapping: "log",
+        });
+        model.releaseTime = S.Param({
+            min: 0.001,
+            max: 10.0,
+            value: 0.1,
+            mapping: "log",
+        });
 
         var soundBuff;
 
@@ -52,14 +67,18 @@ module.exports = function installer(S, sh) {
             } else {
                 var dt = clock.t1 - AC.currentTime;
                 sh.models.load_sample(
-                        url,
-                        function (buff) {
-                            soundBuff = buff;
-                            model.duration = soundBuff.duration;
-                            sched.perform(next, clock.jumpTo(AC.currentTime + dt), sched.stop);
-                        },
-                        errback
+                    url,
+                    function (buff) {
+                        soundBuff = buff;
+                        model.duration = soundBuff.duration;
+                        sched.perform(
+                            next,
+                            clock.jumpTo(AC.currentTime + dt),
+                            sched.stop
                         );
+                    },
+                    errback
+                );
             }
         };
 
@@ -71,9 +90,17 @@ module.exports = function installer(S, sh) {
             source.connect(level);
             source.playbackRate.value = rate;
             source.gain.setValueAtTime(0, clock.t1);
-            source.gain.setTargetAtTime(velocity, clock.t1, model.attackTime.value / 3);
+            source.gain.setTargetAtTime(
+                velocity,
+                clock.t1,
+                model.attackTime.value / 3
+            );
             if (arguments.length > 3) {
-                source.noteGrainOn(clock.t1, sampleOffset, (arguments.length > 4 ? sampleDuration : source.duration));
+                source.noteGrainOn(
+                    clock.t1,
+                    sampleOffset,
+                    arguments.length > 4 ? sampleDuration : source.duration
+                );
             } else {
                 source.noteOn(clock.t1);
             }
@@ -86,7 +113,7 @@ module.exports = function installer(S, sh) {
         // single trigger action by varying the parameter.
         model.trigger = function (velocity, detune_semitones) {
             // Play triggered sounds at normal rate by default.
-            detune_semitones = detune_semitones || 0.0; 
+            detune_semitones = detune_semitones || 0.0;
             return sh.fire(function (clock) {
                 var rate = Math.pow(2, detune_semitones.valueOf() / 12);
                 trigger(clock, rate, velocity.valueOf());
@@ -95,16 +122,16 @@ module.exports = function installer(S, sh) {
 
         // Plays the sound from start to finish. Plays immediately if sound is already loaded.
         // Responds to rate changes of the clock (likely to be not precise).
-        model.play = sh.track([ 
-                model.load, // Ensure the sound is loaded.
-                sh.dynamic(function (clock) {
-                    var source = trigger(clock, clock.rate.valueOf(), 1.0);
+        model.play = sh.track([
+            model.load, // Ensure the sound is loaded.
+            sh.dynamic(function (clock) {
+                var source = trigger(clock, clock.rate.valueOf(), 1.0);
 
-                    return sh.delay(model.duration, function (clock) {
-                        source.playbackRate.value = clock.rate.valueOf();
-                    });
-                })
-                ]);
+                return sh.delay(model.duration, function (clock) {
+                    source.playbackRate.value = clock.rate.valueOf();
+                });
+            }),
+        ]);
 
         // Plays the sample as a "note" of a specific duration.  Assumes that
         // the model is already loaded. The resultant voice will respond live
@@ -120,23 +147,48 @@ module.exports = function installer(S, sh) {
                 activeDur = duration;
             }
             return sh.dynamic(function (clock) {
-                var source = trigger(clock, pitch.valueOf(), 1.0, startOffset, duration);
+                var source = trigger(
+                    clock,
+                    pitch.valueOf(),
+                    1.0,
+                    startOffset,
+                    duration
+                );
                 source.gain.value = 0;
-                source.gain.setTargetAtTime(1.0, clock.t1, model.attackTime.value / 3);
-                source.playbackRate.setTargetAtTime(pitch.valueOf(), clock.t1, clock.dt/3);
+                source.gain.setTargetAtTime(
+                    1.0,
+                    clock.t1,
+                    model.attackTime.value / 3
+                );
+                source.playbackRate.setTargetAtTime(
+                    pitch.valueOf(),
+                    clock.t1,
+                    clock.dt / 3
+                );
 
                 return sh.track([
-                    sh.spawn(sh.track([
-                            sh.delay(activeDur), 
+                    sh.spawn(
+                        sh.track([
+                            sh.delay(activeDur),
                             sh.fire(function (clock) {
-                                source.gain.setTargetAtTime(0.0, clock.t1, model.releaseTime.value / 3);
-                                source.stop(clock.t1 + 12 * model.releaseTime.value);
-                            })
-                            ])),
+                                source.gain.setTargetAtTime(
+                                    0.0,
+                                    clock.t1,
+                                    model.releaseTime.value / 3
+                                );
+                                source.stop(
+                                    clock.t1 + 12 * model.releaseTime.value
+                                );
+                            }),
+                        ])
+                    ),
                     sh.delay(duration, function (clock) {
-                        source.playbackRate.exponentialRampToValueAtTime(pitch.valueOf(), clock.t1);
-                    })
-                    ]);
+                        source.playbackRate.exponentialRampToValueAtTime(
+                            pitch.valueOf(),
+                            clock.t1
+                        );
+                    }),
+                ]);
             });
         };
 
